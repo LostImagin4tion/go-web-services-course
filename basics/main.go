@@ -73,7 +73,7 @@ func handleDir(
 		},
 	)
 
-	var childrenMapped = mapped(&childrenFiltered, func(i int, child os.DirEntry) FileMetadata {
+	var childrenMetadata = mapped(&childrenFiltered, func(i int, child os.DirEntry) FileMetadata {
 		var useVerticalLineForThisChild = i != len(childrenFiltered)-1
 
 		var newUseVerticalLine = append(
@@ -88,13 +88,17 @@ func handleDir(
 		}
 	})
 
-	*stack = append(childrenMapped, *stack...)
+	*stack = append(childrenMetadata, *stack...)
 
 	var printString string
 	if !isRootFile {
 		printString = fmt.Sprintf(
 			"%s%s\n",
-			getTreePrefix(fileMetadata.Depth, lineStartSymbol, fileMetadata.UseVerticalLine),
+			getTreePrefix(
+				fileMetadata.Depth,
+				lineStartSymbol,
+				fileMetadata.UseVerticalLine,
+			),
 			fileInfo.Name(),
 		)
 	}
@@ -119,7 +123,11 @@ func handleRegularFile(
 	if !isRootFile {
 		printString = fmt.Sprintf(
 			"%s%s (%s)\n",
-			getTreePrefix(fileMetadata.Depth, lineStartSymbol, fileMetadata.UseVerticalLine),
+			getTreePrefix(
+				fileMetadata.Depth,
+				lineStartSymbol,
+				fileMetadata.UseVerticalLine,
+			),
 			fileInfo.Name(),
 			sizeStr,
 		)
