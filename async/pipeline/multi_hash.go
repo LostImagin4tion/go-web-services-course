@@ -2,8 +2,8 @@ package pipeline
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
+	"sync"
 )
 
 func MultiHash(
@@ -11,37 +11,45 @@ func MultiHash(
 	outputChannel chan interface{},
 	dataSignerCrc32 func(data string) string,
 ) {
-	fmt.Printf("MultiHash start")
+	fmt.Println("MultiHash start")
+	const threads = 6
 
-	const th = 6
+	PipelineStage(
+		inputChannel,
+		outputChannel,
+		func(data string) string {
+			var results = make([]string, threads)
 
-	var stringBuilder strings.Builder
+			var waitGroup = &sync.WaitGroup{}
+			var mutex = &sync.Mutex{}
 
-	for rawData := range inputChannel {
-		var data, ok = rawData.(string)
-		if !ok {
-			panic("Cant convert input data to string")
-		}
+			for i := range threads {
+				waitGroup.Add(1)
 
-		fmt.Printf("MultiHash data %s\n", data)
+				go func() {
+					defer waitGroup.Done()
 
-		var results = make([]string, th)
-		for i := range th {
-			var crcHash = dataSignerCrc32(strconv.Itoa(i) + data)
-			fmt.Printf("MultiHash crc32(th+data) %d %s\n", i, crcHash)
-			results[i] = crcHash
-		}
+					var crcHash = dataSignerCrc32(
+						fmt.Sprintf("%v%v", i, data),
+					)
+					fmt.Println("MultiHash crc32(threads+data)", i, crcHash)
 
-		for _, result := range results {
-			stringBuilder.WriteString(result)
-		}
+					mutex.Lock()
+					results[i] = crcHash
+					mutex.Unlock()
+				}()
+			}
 
-		var result = stringBuilder.String()
-		fmt.Printf("MultiHash result %s\n\n", result)
+			waitGroup.Wait()
 
-		outputChannel <- result
+			mutex.Lock()
+			var result = strings.Join(results, "")
+			mutex.Unlock()
 
-		stringBuilder.Reset()
-	}
-	close(outputChannel)
+			fmt.Println("MultiHash result", result)
+			fmt.Println()
+
+			return result
+		},
+	)
 }

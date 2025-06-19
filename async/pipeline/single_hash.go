@@ -2,8 +2,7 @@ package pipeline
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
+	"sync"
 )
 
 func SingleHash(
@@ -12,55 +11,59 @@ func SingleHash(
 	dataSignerMd5 func(data string) string,
 	dataSignerCrc32 func(data string) string,
 ) {
-	fmt.Printf("SingleHash start")
+	fmt.Println("SingleHash start")
 
-	var stringBuilder strings.Builder
+	var waitGroup = &sync.WaitGroup{}
+	var mutex = &sync.Mutex{}
 
-	var md5HashChannel = make(chan string, 1)
-	var crc32Md5HashChannel = make(chan string, 1)
-	var crc32HashChannel = make(chan string, 1)
+	PipelineStage(
+		inputChannel,
+		outputChannel,
+		func(data string) string {
+			waitGroup.Add(3)
 
-	for rawData := range inputChannel {
-		var intData, ok = rawData.(int)
-		if !ok {
-			panic("Cant convert input data to int")
-		}
-		var data = strconv.Itoa(intData)
+			var crc32HashChannel = make(chan string, 1)
 
-		fmt.Printf("SingleHash data %s\n", data)
+			var md5HashChannel = make(chan string, 1)
+			var crc32Md5HashChannel = make(chan string, 1)
 
-		go func() {
-			var md5Hash = dataSignerCrc32(data)
-			fmt.Printf("SingleHash md5(data) %s\n", md5Hash)
-			md5HashChannel <- md5Hash
-		}()
+			go func() {
+				defer waitGroup.Done()
 
-		go func() {
-			var md5Hash = <-md5HashChannel
-			var crcMd5Hash = dataSignerCrc32(md5Hash)
-			crc32Md5HashChannel <- dataSignerCrc32(md5Hash)
-		}()
+				var crc32Hash = dataSignerCrc32(data)
+				fmt.Println("SingleHash crc32(data)", crc32Hash)
+				crc32HashChannel <- crc32Hash
+			}()
 
-		go func() {
-			crc32HashChannel <- dataSignerCrc32(data)
-		}()
+			go func() {
+				defer waitGroup.Done()
 
-		var crcMd5Hash = dataSignerCrc32(md5Hash)
-		fmt.Printf("SingleHash crc32(md5(data)) %s\n", crcMd5Hash)
+				mutex.Lock()
+				var md5Hash = dataSignerMd5(data)
+				mutex.Unlock()
+				fmt.Println("SingleHash md5(data)", md5Hash)
+				md5HashChannel <- md5Hash
+			}()
 
-		var crcHash = dataSignerCrc32(data)
-		fmt.Printf("SingleHash crc32(data) %s\n", crcHash)
+			go func() {
+				defer waitGroup.Done()
 
-		stringBuilder.WriteString(crcHash)
-		stringBuilder.WriteString("~")
-		stringBuilder.WriteString(crcMd5Hash)
+				var md5Hash = <-md5HashChannel
+				var crcMd5Hash = dataSignerCrc32(md5Hash)
+				fmt.Println("SingleHash crc32(md5(data))", crcMd5Hash)
+				crc32Md5HashChannel <- crcMd5Hash
+			}()
 
-		var result = stringBuilder.String()
-		fmt.Printf("SingleHash result %s\n\n", result)
+			waitGroup.Wait()
 
-		outputChannel <- result
+			var crc32Hash = <-crc32HashChannel
+			var crc32Md5Hash = <-crc32Md5HashChannel
 
-		stringBuilder.Reset()
-	}
-	close(outputChannel)
+			var result = fmt.Sprintf("%s~%s", crc32Hash, crc32Md5Hash)
+			fmt.Println("SingleHash result", result)
+			fmt.Println()
+
+			return result
+		},
+	)
 }

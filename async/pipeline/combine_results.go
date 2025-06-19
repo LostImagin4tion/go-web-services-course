@@ -10,24 +10,20 @@ func CombineResults(
 	inputChannel chan interface{},
 	outputChannel chan interface{},
 ) {
-	fmt.Printf("CombineResults start")
+	fmt.Println("CombineResults start")
 
 	var results = make([]string, 0)
+
 	for rawData := range inputChannel {
-		var data, ok = rawData.(string)
-		if !ok {
-			panic("Cant convert input data to string")
-		}
+		var data = fmt.Sprintf("%v", rawData)
+		fmt.Println("CombineResults received data", data)
 		results = append(results, data)
 	}
 
-	sort.Slice(results, func(i, j int) bool {
-		return results[i] < results[j]
-	})
+	sort.Strings(results)
 
 	var result = strings.Join(results, "_")
-	fmt.Printf("Combine results %s\n", result)
+	fmt.Println("Combine results", result)
 
 	outputChannel <- result
-	close(outputChannel)
 }
