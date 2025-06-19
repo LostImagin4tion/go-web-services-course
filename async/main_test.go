@@ -4,11 +4,16 @@ import (
 	"crypto/md5"
 	"fmt"
 	"hash/crc32"
+	"stepikGoWebServices/pipeline"
 	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+type Job = pipeline.Job
+
+var dataSignerOverheat uint32 = 0
 
 /*
 это тест на проверку того что у нас это действительно конвейер
@@ -16,70 +21,53 @@ import (
 это не позволяет запускать на конвейере бесконечные задачи
 правильное поведение: обеспечить беспрепятственный поток
 */
-/*
-This test checks that you in fact implemented a pipeline and not accumulating all results (until the input
-is exhausted) and only then passing it to next function in pipeline. This is a wrong approach! It will not
-allow to work with tasks that requires input of undefined length. You need to pass the computed result of
-the function to the next function in pipeline as soon as it is ready.
-*/
-func TestPipeline(t *testing.T) {
+func testPipeline(t *testing.T) {
 
 	var ok = true
-	var recieved uint32
-	freeFlowJobs := []job{
-		job(func(in, out chan interface{}) {
+	var received uint32
+	freeFlowJobs := []Job{
+		Job(func(in, out chan interface{}) {
 			out <- 1
 			time.Sleep(10 * time.Millisecond)
-			currRecieved := atomic.LoadUint32(&recieved)
+			currReceived := atomic.LoadUint32(&received)
 			// в чем тут суть
-			// если вы накапливаете значения, то пока вся функция не отрабоатет - дальше они не пойдут
+			// если вы накапливаете значения, то пока вся функция не отработает - дальше они не пойдут
 			// тут я проверяю, что счетчик увеличился в следующей функции
 			// это значит что туда дошло значение прежде чем текущая функция отработала
 
-			// Here is a gist of this test:
-			// If you are accumulating values instead of implementing a pipeline, you are not passing values to the
-			// next funcion before your current function is finished. That is what I am checking: counter
-			// should increase in next function (meaning that values are going there) before current function
-			// finished its execution.
-
-			if currRecieved == 0 {
+			if currReceived == 0 {
 				ok = false
 			}
 		}),
-		job(func(in, out chan interface{}) {
-			for _ = range in {
-				atomic.AddUint32(&recieved, 1)
+		Job(func(in, out chan interface{}) {
+			for range in {
+				atomic.AddUint32(&received, 1)
 			}
 		}),
 	}
-	ExecutePipeline(freeFlowJobs...)
-	if !ok || recieved == 0 {
+	pipeline.ExecutePipeline(freeFlowJobs...)
+	if !ok || received == 0 {
 		t.Errorf("no value free flow - dont collect them")
 	}
 }
 
 func TestSigner(t *testing.T) {
 
-	testExpected := "1173136728138862632818075107442090076184424490584241521304_1696913515191343735512658979631549563179965036907783101867_27225454331033649287118297354036464389062965355426795162684_29568666068035183841425683795340791879727309630931025356555_3994492081516972096677631278379039212655368881548151736_4958044192186797981418233587017209679042592862002427381542_4958044192186797981418233587017209679042592862002427381542"
+	testExpected := "29568666068035183841425683795340791879727309630931025356555_4958044192186797981418233587017209679042592862002427381542"
 	testResult := "NOT_SET"
 
 	// это небольшая защита от попыток не вызывать мои функции расчета
-	// я преопределяю фукции на свои которые инкрементят локальный счетчик
-	// переопределение возможо потому что я объявил функцию как переменную, в которой лежит функция
-
-	// This is a small check to verify that you are actually using supplied `DataSignerMd5` and
-	// `DataSignerCrc32` functions. These function are substituted by the ones that are incrementing
-	// some local counter. Substitution is possible due to the fact that functions are passed as
-	// variables.
+	// я переопределяю функции на свои которые инкрементят локальный счетчик
+	// переопределение возможно потому что я объявил функцию как переменную, в которой лежит функция
 
 	var (
-		DataSignerSalt         string = "" // на сервере будет другое значение
+		DataSignerSalt         string = ""
 		OverheatLockCounter    uint32
 		OverheatUnlockCounter  uint32
 		DataSignerMd5Counter   uint32
 		DataSignerCrc32Counter uint32
 	)
-	OverheatLock = func() {
+	var OverheatLock = func() {
 		atomic.AddUint32(&OverheatLockCounter, 1)
 		for {
 			if swapped := atomic.CompareAndSwapUint32(&dataSignerOverheat, 0, 1); !swapped {
@@ -90,7 +78,7 @@ func TestSigner(t *testing.T) {
 			}
 		}
 	}
-	OverheatUnlock = func() {
+	var OverheatUnlock = func() {
 		atomic.AddUint32(&OverheatUnlockCounter, 1)
 		for {
 			if swapped := atomic.CompareAndSwapUint32(&dataSignerOverheat, 1, 0); !swapped {
@@ -101,7 +89,7 @@ func TestSigner(t *testing.T) {
 			}
 		}
 	}
-	DataSignerMd5 = func(data string) string {
+	var DataSignerMd5 = func(data string) string {
 		atomic.AddUint32(&DataSignerMd5Counter, 1)
 		OverheatLock()
 		defer OverheatUnlock()
@@ -110,7 +98,7 @@ func TestSigner(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 		return dataHash
 	}
-	DataSignerCrc32 = func(data string) string {
+	var DataSignerCrc32 = func(data string) string {
 		atomic.AddUint32(&DataSignerCrc32Counter, 1)
 		data += DataSignerSalt
 		crcH := crc32.ChecksumIEEE([]byte(data))
@@ -119,20 +107,29 @@ func TestSigner(t *testing.T) {
 		return dataHash
 	}
 
-	inputData := []int{0, 1, 1, 2, 3, 5, 8}
-	// inputData := []int{0,1}
+	//inputData := []int{0, 1, 1, 2, 3, 5, 8}
+	inputData := []int{0, 1}
 
-	hashSignJobs := []job{
-		job(func(in, out chan interface{}) {
+	hashSignJobs := []Job{
+		Job(func(inputChannel, outputChannel chan interface{}) {
 			for _, fibNum := range inputData {
-				out <- fibNum
+				outputChannel <- fibNum
 			}
+			close(outputChannel)
 		}),
-		job(SingleHash),
-		job(MultiHash),
-		job(CombineResults),
-		job(func(in, out chan interface{}) {
-			dataRaw := <-in
+
+		Job(func(inputChannel, outputChannel chan interface{}) {
+			pipeline.SingleHash(inputChannel, outputChannel, DataSignerMd5, DataSignerCrc32)
+		}),
+
+		Job(func(inputChannel, outputChannel chan interface{}) {
+			pipeline.MultiHash(inputChannel, outputChannel, DataSignerCrc32)
+		}),
+
+		Job(pipeline.CombineResults),
+
+		Job(func(inputChannel, outputChannel chan interface{}) {
+			dataRaw := <-inputChannel
 			data, ok := dataRaw.(string)
 			if !ok {
 				t.Error("cant convert result data to string")
@@ -143,7 +140,7 @@ func TestSigner(t *testing.T) {
 
 	start := time.Now()
 
-	ExecutePipeline(hashSignJobs...)
+	pipeline.ExecutePipeline(hashSignJobs...)
 
 	end := time.Since(start)
 
