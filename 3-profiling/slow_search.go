@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"regexp"
 	"strings"
-	// "log"
 )
 
 const filePath string = "./data/users.txt"
@@ -23,7 +23,7 @@ func SlowSearch(out io.Writer) {
 		panic(err)
 	}
 
-	r := regexp.MustCompile("@")
+	reg := regexp.MustCompile("@")
 	var seenBrowsers = make([]string, 0)
 	uniqueBrowsers := 0
 	foundUsers := ""
@@ -33,7 +33,7 @@ func SlowSearch(out io.Writer) {
 	users := make([]map[string]interface{}, 0)
 	for _, line := range lines {
 		user := make(map[string]interface{})
-		// fmt.Printf("%v %v\n", err, line)
+		//fmt.Printf("%v %v\n", err, line)
 		err := json.Unmarshal([]byte(line), &user)
 		if err != nil {
 			panic(err)
@@ -48,14 +48,14 @@ func SlowSearch(out io.Writer) {
 
 		browsers, ok := user["browsers"].([]interface{})
 		if !ok {
-			// log.Println("cant cast browsers")
+			log.Println("Cant cast browsers")
 			continue
 		}
 
 		for _, browserRaw := range browsers {
 			browser, ok := browserRaw.(string)
 			if !ok {
-				// log.Println("cant cast browser to string")
+				//log.Println("Cant cast browser to string")
 				continue
 			}
 			if ok, err := regexp.MatchString("Android", browser); ok && err == nil {
@@ -67,7 +67,7 @@ func SlowSearch(out io.Writer) {
 					}
 				}
 				if notSeenBefore {
-					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
+					//log.Printf("SLOW New browser: %s, first seen: %s\n", browser, user["name"])
 					seenBrowsers = append(seenBrowsers, browser)
 					uniqueBrowsers++
 				}
@@ -77,7 +77,7 @@ func SlowSearch(out io.Writer) {
 		for _, browserRaw := range browsers {
 			browser, ok := browserRaw.(string)
 			if !ok {
-				// log.Println("cant cast browser to string")
+				//log.Println("cant cast browser to string")
 				continue
 			}
 			if ok, err := regexp.MatchString("MSIE", browser); ok && err == nil {
@@ -89,7 +89,7 @@ func SlowSearch(out io.Writer) {
 					}
 				}
 				if notSeenBefore {
-					// log.Printf("SLOW New browser: %s, first seen: %s", browser, user["name"])
+					//log.Printf("SLOW New browser: %s, first seen: %s\n", browser, user["name"])
 					seenBrowsers = append(seenBrowsers, browser)
 					uniqueBrowsers++
 				}
@@ -100,8 +100,8 @@ func SlowSearch(out io.Writer) {
 			continue
 		}
 
-		// log.Println("Android and MSIE user:", user["name"], user["email"])
-		email := r.ReplaceAllString(user["email"].(string), " [at] ")
+		//log.Println("Android and MSIE user:", user["name"], user["email"])
+		email := reg.ReplaceAllString(user["email"].(string), " [at] ")
 		foundUsers += fmt.Sprintf("[%d] %s <%s>\n", i, user["name"], email)
 	}
 
