@@ -2,12 +2,12 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
+	"github.com/mailru/easyjson"
 	"io"
-	"log"
 	"os"
 	"regexp"
+	"stepikGoWebServices/model"
 	"strings"
 )
 
@@ -32,32 +32,21 @@ func FastSearch(out io.Writer) {
 
 	for i := 0; scanner.Scan(); i++ {
 		var line = scanner.Bytes()
-		var user = make(map[string]interface{})
-		//fmt.Printf("%v %v\n", err, line)
-		var err = json.Unmarshal(line, &user)
+		var user = model.User{}
+		var err = easyjson.Unmarshal(line, &user)
 		if err != nil {
 			panic(err)
 		}
 
-		var browsers, ok = user["browsers"].([]interface{})
-		if !ok {
-			log.Println("Cant cast browsers")
-			continue
-		}
-
 		var matchedBrowsers = make(map[string]interface{}, len(targetBrowsers))
 
-		for _, browserRaw := range browsers {
-			var browser, ok = browserRaw.(string)
-			if !ok {
-				//log.Println("Cant cast browser to string")
-				continue
-			}
-
-			for _, targetBrowser := range targetBrowsers {
-				if strings.Contains(browser, targetBrowser) {
-					matchedBrowsers[targetBrowser] = struct{}{}
-					seenBrowsers[browser] = struct{}{}
+		for _, browser := range user.Browsers {
+			if len(browser) != 0 {
+				for _, targetBrowser := range targetBrowsers {
+					if strings.Contains(browser, targetBrowser) {
+						matchedBrowsers[targetBrowser] = struct{}{}
+						seenBrowsers[browser] = struct{}{}
+					}
 				}
 			}
 		}
@@ -67,9 +56,9 @@ func FastSearch(out io.Writer) {
 		}
 
 		//log.Println("Android and MSIE user:", user["name"], user["email"])
-		var email = reg.ReplaceAllString(user["email"].(string), " [at] ")
+		var email = reg.ReplaceAllString(user.Email, " [at] ")
 
-		fmt.Fprintf(out, "[%d] %s <%s>\n", i, user["name"], email)
+		fmt.Fprintf(out, "[%d] %s <%s>\n", i, user.Name, email)
 	}
 
 	fmt.Fprintln(out, "\nTotal unique browsers", len(seenBrowsers))

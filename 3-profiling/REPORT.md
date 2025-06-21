@@ -173,7 +173,7 @@ ROUTINE ======================== stepikGoWebServices.SlowSearch in /Users/danilo
 
 ![mem-flame-graph](includes/start-mem-flamegraph.png)
 
-1) Тяжелыми операциями являются компиляция регулярок, чтение файла и маршалинг жсонов
+1) Тяжелыми операциями являются чтение файла целиком, компиляция регулярок и маршалинг жсонов
 2) Наглядно видно, что компиляция регулярок съедает намного больше памяти, чем все остальное
 
 И снова посмотрим построчно. Видны еще интересные аллокации:
@@ -455,8 +455,6 @@ PASS
 ok      stepikGoWebServices     4.365s
 ```
 
-
-
 ##### CPU
 
 Посмотрим на графы:
@@ -550,6 +548,163 @@ ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilo
 
 #### Бенчмарк
 
+Посмотрим результаты:
 
+```text
+goos: darwin
+goarch: arm64
+pkg: stepikGoWebServices
+cpu: Apple M2 Pro
+BenchmarkSlow-12               4         330962667 ns/op        20316678 B/op     182818 allocs/op
+BenchmarkFast-12              92          13118425 ns/op          720762 B/op      10616 allocs/op
+PASS
+ok      stepikGoWebServices     4.562s
+```
+
+Собственно, у нас снова значительно снизилось время одной операции, количество памяти и аллокацих
+
+##### CPU
+
+Посмотрим на графы:
+
+![improve3-cpu-graph](includes/improve3-cpu-graph.png)
+
+И еще флеймграф:
+
+![improve3-cpu-flame-graph](includes/improve3-cpu-flamegraph.png)
+
+И построчно:
+
+```text
+ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilov6083/GolandProjects/stepikGoWebServices/3-profiling/fast_search.go
+         0      1.08s (flat, cum) 25.90% of Total
+         .          .     14:func FastSearch(out io.Writer) {
+         .       10ms     15:   var file, err = os.Open(filePath)
+         .          .     16:   if err != nil {
+         .          .     17:           panic(err)
+         .          .     18:   }
+         .          .     19:
+         .          .     20:   var scanner = bufio.NewScanner(file)
+         .          .     21:
+         .          .     22:   const bufferSize = 100 * 1024 // 100 kb
+         .          .     23:   var scannerBuffer = make([]byte, bufferSize)
+         .          .     24:   scanner.Buffer(scannerBuffer, bufferSize)
+         .          .     25:
+         .          .     26:   var targetBrowsers = [...]string{"Android", "MSIE"}
+         .          .     27:   var seenBrowsers = make(map[string]interface{})
+         .          .     28:
+         .          .     29:   var reg = regexp.MustCompile("@")
+         .          .     30:
+         .          .     31:   fmt.Fprintln(out, "found users:")
+         .          .     32:
+         .      300ms     33:   for i := 0; scanner.Scan(); i++ {
+         .          .     34:           var line = scanner.Bytes()
+         .          .     35:           var user = model.User{}
+         .      720ms     36:           var err = easyjson.Unmarshal(line, &user)
+         .          .     37:           if err != nil {
+         .          .     38:                   panic(err)
+         .          .     39:           }
+         .          .     40:
+         .          .     41:           var matchedBrowsers = make(map[string]interface{}, len(targetBrowsers))
+         .          .     42:
+         .          .     43:           for _, browser := range user.Browsers {
+         .          .     44:                   if len(browser) != 0 {
+         .          .     45:                           for _, targetBrowser := range targetBrowsers {
+         .          .     46:                                   if strings.Contains(browser, targetBrowser) {
+         .          .     47:                                           matchedBrowsers[targetBrowser] = struct{}{}
+         .          .     48:                                           seenBrowsers[browser] = struct{}{}
+         .          .     49:                                   }
+         .          .     50:                           }
+         .          .     51:                   }
+         .          .     52:           }
+         .          .     53:
+         .          .     54:           if len(matchedBrowsers) != len(targetBrowsers) {
+         .          .     55:                   continue
+         .          .     56:           }
+         .          .     57:
+         .          .     58:           //log.Println("Android and MSIE user:", user["name"], user["email"])
+         .       20ms     59:           var email = reg.ReplaceAllString(user.Email, " [at] ")
+         .          .     60:
+         .       30ms     61:           fmt.Fprintf(out, "[%d] %s <%s>\n", i, user.Name, email)
+         .          .     62:   }
+         .          .     63:
+         .          .     64:   fmt.Fprintln(out, "\nTotal unique browsers", len(seenBrowsers))
+         .          .     65:}
+```
+
+Как видно, `easyjson` дает не столь драматичный прирост перфоманс (примерно 10%), но все равно приятно
+
+##### Memory
+
+Посмотрим на графы:
+
+![improve3-mem-graph](includes/improve3-mem-graph.png)
+
+И еще флеймграф:
+
+![improve3-mem-flame-graph](includes/improve3-mem-flamegraph.png)
+
+И построчно:
+
+```text
+ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilov6083/GolandProjects/stepikGoWebServices/3-profiling/fast_search.go
+   11.60MB    64.59MB (flat, cum) 26.50% of Total
+         .          .     14:func FastSearch(out io.Writer) {
+         .    11.75kB     15:   var file, err = os.Open(filePath)
+         .          .     16:   if err != nil {
+         .          .     17:           panic(err)
+         .          .     18:   }
+         .          .     19:
+         .          .     20:   var scanner = bufio.NewScanner(file)
+         .          .     21:
+         .          .     22:   const bufferSize = 100 * 1024 // 100 kb
+    9.55MB     9.55MB     23:   var scannerBuffer = make([]byte, bufferSize)
+         .          .     24:   scanner.Buffer(scannerBuffer, bufferSize)
+         .          .     25:
+         .          .     26:   var targetBrowsers = [...]string{"Android", "MSIE"}
+         .          .     27:   var seenBrowsers = make(map[string]interface{})
+         .          .     28:
+         .    71.23kB     29:   var reg = regexp.MustCompile("@")
+         .          .     30:
+         .    14.78kB     31:   fmt.Fprintln(out, "found users:")
+         .          .     32:
+         .          .     33:   for i := 0; scanner.Scan(); i++ {
+         .          .     34:           var line = scanner.Bytes()
+         .          .     35:           var user = model.User{}
+         .    51.09MB     36:           var err = easyjson.Unmarshal(line, &user)
+         .          .     37:           if err != nil {
+         .          .     38:                   panic(err)
+         .          .     39:           }
+         .          .     40:
+         .          .     41:           var matchedBrowsers = make(map[string]interface{}, len(targetBrowsers))
+         .          .     42:
+         .          .     43:           for _, browser := range user.Browsers {
+         .          .     44:                   if len(browser) != 0 {
+         .          .     45:                           for _, targetBrowser := range targetBrowsers {
+         .          .     46:                                   if strings.Contains(browser, targetBrowser) {
+         .          .     47:                                           matchedBrowsers[targetBrowser] = struct{}{}
+    1.77MB     1.77MB     48:                                           seenBrowsers[browser] = struct{}{}
+         .          .     49:                                   }
+         .          .     50:                           }
+         .          .     51:                   }
+         .          .     52:           }
+         .          .     53:
+         .          .     54:           if len(matchedBrowsers) != len(targetBrowsers) {
+         .          .     55:                   continue
+         .          .     56:           }
+         .          .     57:
+         .          .     58:           //log.Println("Android and MSIE user:", user["name"], user["email"])
+         .     1.74MB     59:           var email = reg.ReplaceAllString(user.Email, " [at] ")
+         .          .     60:
+  287.91kB   362.50kB     61:           fmt.Fprintf(out, "[%d] %s <%s>\n", i, user.Name, email)
+         .          .     62:   }
+         .          .     63:
+         .          .     64:   fmt.Fprintln(out, "\nTotal unique browsers", len(seenBrowsers))
+         .          .     65:}
+```
+
+Количество памяти, съедаемое для маршалинга жсона, сильно выросло (в 2.5 раза), что в целом ожидаемо
 
 ## Итог
+
+
