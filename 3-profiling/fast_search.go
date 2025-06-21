@@ -23,7 +23,10 @@ func FastSearch(out io.Writer) {
 	var scannerBuffer = make([]byte, bufferSize)
 	scanner.Buffer(scannerBuffer, bufferSize)
 
-	var targetBrowsers = [...]string{"Android", "MSIE"}
+	var targetBrowsers = []string{
+		"Android",
+		"MSIE",
+	}
 	var seenBrowsers = make(map[string]interface{})
 
 	var reg = regexp.MustCompile("@")

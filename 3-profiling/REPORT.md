@@ -705,6 +705,35 @@ ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilo
 
 Количество памяти, съедаемое для маршалинга жсона, сильно выросло (в 2.5 раза), что в целом ожидаемо
 
+### 4. Прекомпилированные регулярки
+
+Ранее я заменил regexp.MatchString на strings.Contains. Можно попробовать заменить это на использование прекомпилированной регулярки
+
+#### Бенчмарк
+
+```text
+goos: darwin
+goarch: arm64
+pkg: stepikGoWebServices
+cpu: Apple M2 Pro
+BenchmarkSlow-12               4         317213375 ns/op        20271058 B/op     182811 allocs/op
+BenchmarkFast-12              90          14236869 ns/op          731581 B/op      10651 allocs/op
+PASS
+ok      stepikGoWebServices     4.590s
+```
+
+Как видно, длительность одной операции выросла, поэтому отказался от этой идеи
+
 ## Итог
 
+```text
+goos: darwin
+goarch: arm64
+pkg: stepikGoWebServices
+cpu: Apple M2 Pro
+BenchmarkSlow-12               4         311526312 ns/op        20263504 B/op     182812 allocs/op
+BenchmarkFast-12              98          12126571 ns/op          727487 B/op      10617 allocs/op
+PASS
+ok      stepikGoWebServices     4.520s
+```
 
