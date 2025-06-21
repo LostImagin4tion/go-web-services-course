@@ -19,6 +19,10 @@ func FastSearch(out io.Writer) {
 
 	var scanner = bufio.NewScanner(file)
 
+	const bufferSize = 100 * 1024 // 100 kb
+	var scannerBuffer = make([]byte, bufferSize)
+	scanner.Buffer(scannerBuffer, bufferSize)
+
 	var targetBrowsers = [...]string{"Android", "MSIE"}
 	var seenBrowsers = make(map[string]interface{})
 

@@ -296,8 +296,6 @@ ROUTINE ======================== stepikGoWebServices.SlowSearch in /Users/danilo
 
 #### Бенчмарк
 
-##### CPU
-
 Посмотрим на результаты:
 
 ```text
@@ -312,6 +310,8 @@ ok      stepikGoWebServices     4.464s
 ```
 
 Уже сейчас мы на порядок сократили количество затрачиваемого времени и памяти на операцию
+
+##### CPU
 
 Посмотрим на графы:
 
@@ -435,4 +435,121 @@ ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilo
 
 Как видно, теперь нагрузку на память создает только парсинг жсона
 
-## Результат
+### 2. Системные вызовы
+
+Чтобы уменьшить количество сисколлов, можно попробовать увеличить объем буфера сканера.
+К примеру, возьмем 100 кб
+
+#### Бенчмарк
+
+Посмотрим на результаты:
+
+```text
+goos: darwin
+goarch: arm64
+pkg: stepikGoWebServices
+cpu: Apple M2 Pro
+BenchmarkSlow-12               4         311490990 ns/op        20257788 B/op     182807 allocs/op
+BenchmarkFast-12              14          80339875 ns/op         1668221 B/op      45539 allocs/op
+PASS
+ok      stepikGoWebServices     4.365s
+```
+
+
+
+##### CPU
+
+Посмотрим на графы:
+
+![improve2-cpu-graph](includes/improve2-cpu-graph.png)
+
+И еще флеймграф:
+
+![improve2-cpu-flame-graph](includes/improve2-cpu-flamegraph.png)
+
+И построчно:
+
+```text
+ROUTINE ======================== stepikGoWebServices.FastSearch in /Users/danilov6083/GolandProjects/stepikGoWebServices/3-profiling/fast_search.go
+         0      980ms (flat, cum) 25.13% of Total
+         .          .     14:func FastSearch(out io.Writer) {
+         .       10ms     15:   var file, err = os.Open(filePath)
+         .          .     16:   if err != nil {
+         .          .     17:           panic(err)
+         .          .     18:   }
+         .          .     19:
+         .          .     20:   var scanner = bufio.NewScanner(file)
+         .          .     21:
+         .          .     22:   const bufferSize = 100 * 1024 // 100 kb
+         .          .     23:   var scannerBuffer = make([]byte, bufferSize)
+         .          .     24:   scanner.Buffer(scannerBuffer, bufferSize)
+         .          .     25:
+         .          .     26:   var targetBrowsers = [...]string{"Android", "MSIE"}
+         .          .     27:   var seenBrowsers = make(map[string]interface{})
+         .          .     28:
+         .          .     29:   var reg = regexp.MustCompile("@")
+         .          .     30:
+         .          .     31:   fmt.Fprintln(out, "found users:")
+         .          .     32:
+         .      110ms     33:   for i := 0; scanner.Scan(); i++ {
+         .          .     34:           var line = scanner.Bytes()
+         .       40ms     35:           var user = make(map[string]interface{})
+         .          .     36:           //fmt.Printf("%v %v\n", err, line)
+         .      810ms     37:           var err = json.Unmarshal(line, &user)
+         .          .     38:           if err != nil {
+         .          .     39:                   panic(err)
+         .          .     40:           }
+         .          .     41:
+         .          .     42:           var browsers, ok = user["browsers"].([]interface{})
+         .          .     43:           if !ok {
+         .          .     44:                   log.Println("Cant cast browsers")
+         .          .     45:                   continue
+         .          .     46:           }
+         .          .     47:
+         .          .     48:           var matchedBrowsers = make(map[string]interface{}, len(targetBrowsers))
+         .          .     49:
+         .          .     50:           for _, browserRaw := range browsers {
+         .          .     51:                   var browser, ok = browserRaw.(string)
+         .          .     52:                   if !ok {
+         .          .     53:                           //log.Println("Cant cast browser to string")
+         .          .     54:                           continue
+         .          .     55:                   }
+         .          .     56:
+         .          .     57:                   for _, targetBrowser := range targetBrowsers {
+         .          .     58:                           if strings.Contains(browser, targetBrowser) {
+         .          .     59:                                   matchedBrowsers[targetBrowser] = struct{}{}
+         .          .     60:                                   seenBrowsers[browser] = struct{}{}
+         .          .     61:                           }
+         .          .     62:                   }
+         .          .     63:           }
+         .          .     64:
+         .          .     65:           if len(matchedBrowsers) != len(targetBrowsers) {
+         .          .     66:                   continue
+         .          .     67:           }
+         .          .     68:
+         .          .     69:           //log.Println("Android and MSIE user:", user["name"], user["email"])
+         .       10ms     70:           var email = reg.ReplaceAllString(user["email"].(string), " [at] ")
+         .          .     71:
+         .          .     72:           fmt.Fprintf(out, "[%d] %s <%s>\n", i, user["name"], email)
+         .          .     73:   }
+         .          .     74:
+         .          .     75:   fmt.Fprintln(out, "\nTotal unique browsers", len(seenBrowsers))
+```
+
+Видно, что нагрузка на CPU с использованием буфера снизилась на 9 раз. Единственным узким местом остается маршалинг жсона
+
+##### Memory
+
+При этом количество затрачиваемой памяти особо не изменилось:
+
+![improve2-mem-graph](includes/improve2-mem-graph.png)
+
+### 3. easyjson
+
+Наконец, добавим библиотеку `easyjson`
+
+#### Бенчмарк
+
+
+
+## Итог

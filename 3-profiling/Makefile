@@ -2,7 +2,8 @@ test:
 	go test -v
 
 bench:
-	go test -bench . -benchmem \
+	go test -bench . \
+		-benchmem \
 		-cpuprofile cpu.out \
 		-memprofile mem.out \
 		-memprofilerate 1 \
