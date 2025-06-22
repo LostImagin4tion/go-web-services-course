@@ -20,11 +20,23 @@ var (
 )
 
 type User struct {
+	fmt.Stringer
+
 	Id     int
 	Name   string
 	Age    int
 	About  string
 	Gender string
+}
+
+func (u *User) String() string {
+	return fmt.Sprintf(
+		"User(id=%v, name=%v, age=%v gender=%v),",
+		u.Id,
+		u.Name,
+		u.Age,
+		u.Gender,
+	)
 }
 
 type SearchResponse struct {
