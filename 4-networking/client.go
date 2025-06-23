@@ -29,7 +29,7 @@ type User struct {
 	Gender string
 }
 
-func (u *User) String() string {
+func (u User) String() string {
 	return fmt.Sprintf(
 		"User(id=%v, name=%v, age=%v gender=%v),",
 		u.Id,
@@ -49,11 +49,24 @@ type SearchErrorResponse struct {
 }
 
 const (
-	OrderByAsc  = -1
+	OrderByDesc = -1
 	OrderByAsIs = 0
-	OrderByDesc = 1
+	OrderByAsc  = 1
 
-	ErrorBadOrderField = `OrderField invalid`
+	OrderFieldId   = "Id"
+	OrderFieldAge  = "Age"
+	OrderFieldName = "Name"
+
+	ErrorBadOrderField = "OrderField invalid"
+	ErrorBadOrderBy    = "OrderBy invalid"
+)
+
+var (
+	validOrderFieldValues = []string{
+		OrderFieldId,
+		OrderFieldAge,
+		OrderFieldName,
+	}
 )
 
 type SearchRequest struct {
@@ -65,10 +78,8 @@ type SearchRequest struct {
 }
 
 type SearchClient struct {
-	// токен, по которому происходит авторизация на внешней системе, уходит туда через хедер
 	AccessToken string
-	// урл внешней системы, куда идти
-	URL string
+	URL         string
 }
 
 // FindUsers отправляет запрос во внешнюю систему, которая непосредственно ищет пользователей

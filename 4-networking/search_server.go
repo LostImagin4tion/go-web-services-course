@@ -1,37 +1,50 @@
 package main
 
 import (
+	"cmp"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
 
 const (
-	usersDatabasePath = "./dataset.xml"
-
-	userToken          = "row"
-	userIdToken        = "id"
-	userFirstNameToken = "first_name"
-	userLastNameToken  = "last_name"
-	userAgeToken       = "age"
-	userAboutToken     = "about"
-	userGenderToken    = "gender"
+	usersDatabasePath  = "./dataset.xml"
+	accessTokenCorrect = "accessToken"
 )
+
+type databaseData struct {
+	XMLName xml.Name      `xml:"root"`
+	XMLRows []databaseRow `xml:"row"`
+}
+
+type databaseRow struct {
+	XMLName   xml.Name `xml:"row"`
+	Id        int      `xml:"id"`
+	FirstName string   `xml:"first_name"`
+	LastName  string   `xml:"last_name"`
+	Age       int      `xml:"age"`
+	About     string   `xml:"about"`
+	Gender    string   `xml:"gender"`
+}
 
 type SearchServer struct {
 	server  http.Server
-	usersDb []*User
+	usersDb []User
 }
 
 func (s *SearchServer) StartServer(address string) {
 	s.loadDb()
 
 	var mux = http.NewServeMux()
-	mux.HandleFunc("/", handler)
+	s.muxHandler(mux)
 
 	s.server = http.Server{
 		Addr:         address,
@@ -51,73 +64,193 @@ func (s *SearchServer) loadDb() {
 	if err != nil {
 		panic(err)
 	}
+	defer file.Close()
 
-	var userId int
-	var userNameBuilder strings.Builder
-	var userAge int
-	var userAbout string
-	var userGender string
+	var dbData databaseData
+	var data, _ = io.ReadAll(file)
 
-	var decoder = xml.NewDecoder(file)
-	for {
-		var token, tokenErr = decoder.Token()
-		if tokenErr != nil && tokenErr != io.EOF {
-			fmt.Println("Error happened", tokenErr)
-			break
-		} else if tokenErr == io.EOF {
-			break
-		}
+	err = xml.Unmarshal(data, &dbData)
+	if err != nil {
+		panic("Failed to unmarshal database")
+	}
 
-		if token == nil {
-			fmt.Println("Token is nil")
-		}
-
-		switch tokenType := token.(type) {
-		case xml.StartElement:
-			var decodeError error
-
-			switch tokenType.Name.Local {
-			case userIdToken:
-				decodeError = decoder.DecodeElement(&userId, &tokenType)
-			case userFirstNameToken:
-				var userFirstName string
-				decodeError = decoder.DecodeElement(&userFirstName, &tokenType)
-				userNameBuilder.WriteString(userFirstName)
-			case userLastNameToken:
-				var userLastName string
-				decodeError = decoder.DecodeElement(&userLastName, &tokenType)
-				userNameBuilder.WriteString(userLastName)
-			case userAgeToken:
-				decodeError = decoder.DecodeElement(&userAge, &tokenType)
-			case userAboutToken:
-				decodeError = decoder.DecodeElement(&userAbout, &tokenType)
-			case userGenderToken:
-				decodeError = decoder.DecodeElement(&userGender, &tokenType)
-			}
-
-			if decodeError != nil {
-				fmt.Printf("Error happened while decoding element %v, %e\n", tokenType, decodeError)
-			}
-
-		case xml.EndElement:
-			switch tokenType.Name.Local {
-			case userToken:
-				var user = &User{
-					Id:     userId,
-					Name:   userNameBuilder.String(),
-					Age:    userAge,
-					About:  userAbout,
-					Gender: userGender,
-				}
-				userNameBuilder.Reset()
-				s.usersDb = append(s.usersDb, user)
-			}
-		}
+	for _, row := range dbData.XMLRows {
+		s.usersDb = append(
+			s.usersDb,
+			User{
+				Id:     row.Id,
+				Name:   fmt.Sprintf("%v %v", row.FirstName, row.LastName),
+				Age:    row.Age,
+				About:  row.About,
+				Gender: row.Gender,
+			},
+		)
 	}
 
 	fmt.Printf("Decoded %v users: %v", len(s.usersDb), s.usersDb)
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
+func (s *SearchServer) muxHandler(mux *http.ServeMux) {
+	mux.HandleFunc("/", s.rootHandler)
+	mux.HandleFunc("/find-users", s.findUsersHandler)
+}
 
+func (s *SearchServer) rootHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "Hello world!")
+}
+
+func (s *SearchServer) findUsersHandler(w http.ResponseWriter, r *http.Request) {
+	var accessToken = r.Header.Get("AccessToken")
+	if accessToken != accessTokenCorrect {
+		sendError(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	var searchRequest, err = parseSearchRequest(r.URL)
+	if err != nil {
+		sendError(
+			w,
+			fmt.Sprintf("Failed to parse search request %v", err),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
+	if len(searchRequest.OrderField) != 0 && slices.Contains(validOrderFieldValues, searchRequest.OrderField) {
+		sendError(w, ErrorBadOrderField, http.StatusBadRequest)
+		return
+	}
+	if searchRequest.OrderBy < -1 || searchRequest.OrderBy > 1 {
+		sendError(w, ErrorBadOrderBy, http.StatusBadRequest)
+		return
+	}
+	if searchRequest.Limit < 0 {
+		sendError(w, "Limit must be >= 0", http.StatusBadRequest)
+	}
+	if searchRequest.Offset < 0 {
+		sendError(w, "Offset must be >= 0", http.StatusBadRequest)
+	}
+
+	var query = searchRequest.Query
+	var queriedUsers = make([]User, 10)
+
+	if len(query) == 0 {
+		queriedUsers = make([]User, len(s.usersDb))
+		copy(queriedUsers, s.usersDb)
+	} else {
+		for _, user := range s.usersDb {
+			if strings.Contains(user.Name, query) || strings.Contains(user.About, query) {
+				queriedUsers = append(queriedUsers, user)
+			}
+		}
+	}
+
+	if searchRequest.OrderBy != OrderByAsIs {
+		performSort(&queriedUsers, searchRequest.OrderField, searchRequest.OrderBy)
+	}
+
+	var result []User
+
+	var from = searchRequest.Offset
+	if from > len(queriedUsers)-1 {
+		result = make([]User, 0)
+	} else {
+		var to = min(
+			searchRequest.Offset+searchRequest.Limit,
+			len(queriedUsers),
+		)
+		result = queriedUsers[from:to]
+	}
+
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		sendError(
+			w,
+			fmt.Sprintf("Error happened while parsing queried users: %v", err),
+			http.StatusInternalServerError,
+		)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(jsonResult)
+}
+
+func sendError(w http.ResponseWriter, str string, status int) {
+	j, err := json.Marshal(SearchErrorResponse{str})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(j)
+}
+
+func parseSearchRequest(url *url.URL) (*SearchRequest, error) {
+	var queryParams = url.Query()
+
+	var err error
+
+	var limitStr = queryParams.Get("limit")
+	var limit int
+	if len(limitStr) != 0 {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			return nil, fmt.Errorf("cant convert limit value to int %v", err)
+		}
+	}
+
+	var offsetStr = queryParams.Get("offset")
+	var offset int
+	if len(offsetStr) != 0 {
+		offset, err = strconv.Atoi(queryParams.Get("offset"))
+		if err != nil {
+			return nil, fmt.Errorf("cant convert offset value to int %v", err)
+		}
+	}
+
+	var orderByStr = queryParams.Get("order_by")
+	var orderBy int
+	if len(orderByStr) != 0 {
+		orderBy, err = strconv.Atoi(orderByStr)
+		if err != nil {
+			return nil, fmt.Errorf("cant convert order_by value to int %v", err)
+		}
+	}
+
+	var query = queryParams.Get("query")
+	var orderField = queryParams.Get("order_field")
+
+	return &SearchRequest{
+		Limit:      limit,
+		Offset:     offset,
+		Query:      query,
+		OrderField: orderField,
+		OrderBy:    orderBy,
+	}, nil
+}
+
+func performSort(users *[]User, orderField string, orderBy int) {
+	slices.SortFunc(
+		*users,
+		func(a, b User) int {
+			switch {
+			case orderField == OrderFieldName || len(orderField) == 0:
+				var compare = cmp.Compare(a.Name, b.Name)
+				return orderBy * compare
+
+			case orderField == OrderFieldId:
+				var compare = cmp.Compare(a.Id, b.Id)
+				return orderBy * compare
+
+			case orderField == OrderFieldAge:
+				var compare = cmp.Compare(a.Age, b.Age)
+				return orderBy * compare
+
+			default:
+				return -1
+			}
+		},
+	)
 }
