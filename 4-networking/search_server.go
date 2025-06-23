@@ -66,7 +66,7 @@ func LoadUserDatabase() {
 		)
 	}
 
-	fmt.Printf("Decoded %v users: %v", len(usersDb), usersDb)
+	fmt.Printf("Decoded %v users: %v\n", len(usersDb), usersDb)
 }
 
 func SearchServer(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +86,7 @@ func SearchServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(searchRequest.OrderField) != 0 && slices.Contains(validOrderFieldValues, searchRequest.OrderField) {
+	if len(searchRequest.OrderField) != 0 && !slices.Contains(validOrderFieldValues, searchRequest.OrderField) {
 		sendError(w, ErrorBadOrderField, http.StatusBadRequest)
 		return
 	}
