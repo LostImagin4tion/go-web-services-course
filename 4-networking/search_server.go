@@ -12,12 +12,15 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
 	usersDatabasePath  = "./dataset.xml"
 	accessTokenCorrect = "accessToken"
+)
+
+var (
+	usersDb = make([]User, 0)
 )
 
 type databaseData struct {
@@ -35,31 +38,7 @@ type databaseRow struct {
 	Gender    string   `xml:"gender"`
 }
 
-type SearchServer struct {
-	server  http.Server
-	usersDb []User
-}
-
-func (s *SearchServer) StartServer(address string) {
-	s.loadDb()
-
-	var mux = http.NewServeMux()
-	s.muxHandler(mux)
-
-	s.server = http.Server{
-		Addr:         address,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-	}
-
-	var err = s.server.ListenAndServe()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (s *SearchServer) loadDb() {
+func LoadUserDatabase() {
 	var file, err = os.Open(usersDatabasePath)
 	if err != nil {
 		panic(err)
@@ -75,8 +54,8 @@ func (s *SearchServer) loadDb() {
 	}
 
 	for _, row := range dbData.XMLRows {
-		s.usersDb = append(
-			s.usersDb,
+		usersDb = append(
+			usersDb,
 			User{
 				Id:     row.Id,
 				Name:   fmt.Sprintf("%v %v", row.FirstName, row.LastName),
@@ -87,19 +66,10 @@ func (s *SearchServer) loadDb() {
 		)
 	}
 
-	fmt.Printf("Decoded %v users: %v", len(s.usersDb), s.usersDb)
+	fmt.Printf("Decoded %v users: %v", len(usersDb), usersDb)
 }
 
-func (s *SearchServer) muxHandler(mux *http.ServeMux) {
-	mux.HandleFunc("/", s.rootHandler)
-	mux.HandleFunc("/find-users", s.findUsersHandler)
-}
-
-func (s *SearchServer) rootHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello world!")
-}
-
-func (s *SearchServer) findUsersHandler(w http.ResponseWriter, r *http.Request) {
+func SearchServer(w http.ResponseWriter, r *http.Request) {
 	var accessToken = r.Header.Get("AccessToken")
 	if accessToken != accessTokenCorrect {
 		sendError(w, "Unauthorized", http.StatusUnauthorized)
@@ -132,13 +102,13 @@ func (s *SearchServer) findUsersHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var query = searchRequest.Query
-	var queriedUsers = make([]User, 10)
+	var queriedUsers = make([]User, 0)
 
 	if len(query) == 0 {
-		queriedUsers = make([]User, len(s.usersDb))
-		copy(queriedUsers, s.usersDb)
+		queriedUsers = make([]User, len(usersDb))
+		copy(queriedUsers, usersDb)
 	} else {
-		for _, user := range s.usersDb {
+		for _, user := range usersDb {
 			if strings.Contains(user.Name, query) || strings.Contains(user.About, query) {
 				queriedUsers = append(queriedUsers, user)
 			}
