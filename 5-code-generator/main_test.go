@@ -71,7 +71,7 @@ func TestMyApi(t *testing.T) {
 			Query:  "",
 			Status: http.StatusBadRequest,
 			Result: CaseResult{
-				"error": "login must me not empty",
+				"error": "login must be not empty",
 			},
 		},
 		{ // получили ошибку общего назначения - ваш код сам подставил 500
