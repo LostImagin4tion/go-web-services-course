@@ -314,7 +314,7 @@ func TestApis(t *testing.T) {
 				"id": 4, // primary key нельзя обновлять у существующей записи
 			},
 			Result: CaseResponse{
-				"error": "field id have invalid type",
+				"error": "field id has invalid type",
 			},
 		},
 		{
@@ -325,7 +325,7 @@ func TestApis(t *testing.T) {
 				"title": 42,
 			},
 			Result: CaseResponse{
-				"error": "field title have invalid type",
+				"error": "field title has invalid type",
 			},
 		},
 		{
@@ -336,7 +336,7 @@ func TestApis(t *testing.T) {
 				"title": nil,
 			},
 			Result: CaseResponse{
-				"error": "field title have invalid type",
+				"error": "field title has invalid type",
 			},
 		},
 
@@ -348,7 +348,7 @@ func TestApis(t *testing.T) {
 				"updated": 42,
 			},
 			Result: CaseResponse{
-				"error": "field updated have invalid type",
+				"error": "field updated has invalid type",
 			},
 		},
 
@@ -433,7 +433,7 @@ func TestApis(t *testing.T) {
 				"user_id": 1, // primary key нельзя обновлять у существующей записи
 			},
 			Result: CaseResponse{
-				"error": "field user_id have invalid type",
+				"error": "field user_id has invalid type",
 			},
 		},
 		// не забываем про sql-инъекции

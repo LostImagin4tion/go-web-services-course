@@ -1,7 +1,6 @@
 package explorer
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -55,7 +54,12 @@ func (d *DbExplorer) validateColumnTables(r *http.Request) error {
 					Err:          fmt.Errorf("wrong column"),
 				}
 			}
-
+			if (value == nil && !column.IsNullable) || (fmt.Sprintf("%T", value) != column.DataType) {
+				return apiError{
+					ResponseCode: http.StatusBadRequest,
+					Err:          fmt.Errorf("field %v has invalid type", name),
+				}
+			}
 		}
 	}
 	return nil

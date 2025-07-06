@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
 	"stepikGoWebServices/queries"
 	"strconv"
 	"strings"
@@ -32,7 +31,7 @@ func (d *DbExplorer) handleArbitraryPath(r *http.Request) (any, error) {
 		return d.handleGetRequest(r, table, id)
 
 	case http.MethodPut:
-		return d.handlePutRequest(r, table, id)
+		return d.handlePutRequest(r, table)
 
 	case http.MethodPost:
 		return d.handlePostRequest(r, table, id)
@@ -102,9 +101,47 @@ func (d *DbExplorer) handleGetRequest(
 func (d *DbExplorer) handlePutRequest(
 	r *http.Request,
 	table string,
-	id int,
 ) (any, error) {
 
+	var body, err = d.parseBody(r)
+	var columns = make([]string, len(body))
+	var values = make([]string, len(body))
+
+	for column := range body {
+		columns = append(columns, column)
+	}
+	for _, value := range body {
+		values = append(values, fmt.Sprintf("%v", value))
+	}
+
+	var columnsArg = fmt.Sprintf("'%s'", strings.Join(columns, ","))
+	var valuesArg = fmt.Sprintf("'%s'", strings.Join(values, ","))
+
+	result, err := d.Db.Exec(
+		d.QueriesMap[queries.CreateNewItemQuery],
+		table,
+		columnsArg,
+		valuesArg,
+	)
+
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusBadRequest,
+			Err:          fmt.Errorf("failed to add new item: %v", err),
+		}
+	}
+
+	lastId, err := result.LastInsertId()
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusInternalServerError,
+			Err:          fmt.Errorf("failed to get last inserted id: %v", err),
+		}
+	}
+
+	return map[string]int{
+		columns[0]: int(lastId),
+	}, nil
 }
 
 func (d *DbExplorer) handlePostRequest(
