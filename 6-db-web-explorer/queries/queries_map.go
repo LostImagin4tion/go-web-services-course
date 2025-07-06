@@ -9,6 +9,7 @@ const (
 	SelectFromTableQuery    = "select_from_table.sql"
 	SelectAllFromTableQuery = "select_all_from_table.sql"
 	CreateNewItemQuery      = "create_new_item.sql"
+	UpdateItemQuery         = "update_item.sql"
 )
 
 func NewQueriesMap() map[string]string {

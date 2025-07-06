@@ -22,7 +22,16 @@ func (d *DbExplorer) handleArbitraryPath(r *http.Request) (any, error) {
 	if len(split) > 1 {
 		id, err = strconv.Atoi(split[1])
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert id to int: %v", err)
+			return nil, apiError{
+				ResponseCode: http.StatusBadRequest,
+				Err:          fmt.Errorf("failed to convert id to int: %v", err),
+			}
+		}
+	}
+	if id == -1 && (r.Method == http.MethodPost || r.Method == http.MethodDelete) {
+		return nil, apiError{
+			ResponseCode: http.StatusBadRequest,
+			Err:          fmt.Errorf("id has invalid type"),
 		}
 	}
 
@@ -150,6 +159,43 @@ func (d *DbExplorer) handlePostRequest(
 	id int,
 ) (any, error) {
 
+	var body, err = d.parseBody(r)
+
+	var args = make([]any, len(body)+2)
+	args = append(args, table)
+
+	for name, value := range body {
+		args = append(
+			args,
+			fmt.Sprintf("`%s` = %v", name, value),
+		)
+	}
+
+	args = append(args, id)
+
+	result, err := d.Db.Exec(
+		d.QueriesMap[queries.UpdateItemQuery],
+		args...,
+	)
+
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusBadRequest,
+			Err:          fmt.Errorf("failed to update item: %v", err),
+		}
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusInternalServerError,
+			Err:          fmt.Errorf("failed to get affected rows: %v", err),
+		}
+	}
+
+	return map[string]int{
+		"updated": int(rowsAffected),
+	}, nil
 }
 
 func (d *DbExplorer) handleDeleteRequest(
