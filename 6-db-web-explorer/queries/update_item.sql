@@ -1,2 +1,2 @@
-UPDATE ? SET ?
-WHERE ?
+UPDATE %s SET %s
+WHERE %s

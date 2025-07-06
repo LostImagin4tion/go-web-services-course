@@ -117,7 +117,7 @@ func TestApis(t *testing.T) {
 			Path:   "/unknown_table",
 			Status: http.StatusNotFound,
 			Result: CaseResponse{
-				"error": "unknown table",
+				"error": "unknown_table",
 			},
 		},
 		{
@@ -177,11 +177,13 @@ func TestApis(t *testing.T) {
 			Path: "/items/1",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"id":          1,
-						"title":       "database/sql",
-						"description": "Рассказать про базы данных",
-						"updated":     "rvasily",
+					"records": []CaseResponse{
+						{
+							"id":          1,
+							"title":       "database/sql",
+							"description": "Рассказать про базы данных",
+							"updated":     "rvasily",
+						},
 					},
 				},
 			},
@@ -216,11 +218,13 @@ func TestApis(t *testing.T) {
 			Path: "/items/3",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"id":          3,
-						"title":       "db_crud",
-						"description": "",
-						"updated":     nil,
+					"records": []CaseResponse{
+						{
+							"id":          3,
+							"title":       "db_crud",
+							"description": "",
+							"updated":     nil,
+						},
 					},
 				},
 			},
@@ -241,11 +245,13 @@ func TestApis(t *testing.T) {
 			Path: "/items/3",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"id":          3,
-						"title":       "db_crud",
-						"description": "Написать программу db_crud",
-						"updated":     nil,
+					"records": []CaseResponse{
+						{
+							"id":          3,
+							"title":       "db_crud",
+							"description": "Написать программу db_crud",
+							"updated":     nil,
+						},
 					},
 				},
 			},
@@ -268,11 +274,13 @@ func TestApis(t *testing.T) {
 			Path: "/items/3",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"id":          3,
-						"title":       "db_crud",
-						"description": "Написать программу db_crud",
-						"updated":     "autotests",
+					"records": []CaseResponse{
+						{
+							"id":          3,
+							"title":       "db_crud",
+							"description": "Написать программу db_crud",
+							"updated":     "autotests",
+						},
 					},
 				},
 			},
@@ -295,11 +303,13 @@ func TestApis(t *testing.T) {
 			Path: "/items/3",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"id":          3,
-						"title":       "db_crud",
-						"description": "Написать программу db_crud",
-						"updated":     nil,
+					"records": []CaseResponse{
+						{
+							"id":          3,
+							"title":       "db_crud",
+							"description": "Написать программу db_crud",
+							"updated":     nil,
+						},
 					},
 				},
 			},
@@ -384,13 +394,15 @@ func TestApis(t *testing.T) {
 			Path: "/users/1",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"user_id":  1,
-						"login":    "rvasily",
-						"password": "love",
-						"email":    "rvasily@example.com",
-						"info":     "none",
-						"updated":  nil,
+					"records": []CaseResponse{
+						{
+							"user_id":  1,
+							"login":    "rvasily",
+							"password": "love",
+							"email":    "rvasily@example.com",
+							"info":     "none",
+							"updated":  nil,
+						},
 					},
 				},
 			},
@@ -413,13 +425,15 @@ func TestApis(t *testing.T) {
 			Path: "/users/1",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"user_id":  1,
-						"login":    "rvasily",
-						"password": "love",
-						"email":    "rvasily@example.com",
-						"info":     "try update",
-						"updated":  "now",
+					"records": []CaseResponse{
+						{
+							"user_id":  1,
+							"login":    "rvasily",
+							"password": "love",
+							"email":    "rvasily@example.com",
+							"info":     "try update",
+							"updated":  "now",
+						},
 					},
 				},
 			},
@@ -445,6 +459,8 @@ func TestApis(t *testing.T) {
 				"login":      "qwerty'",
 				"password":   "love\"",
 				"unkn_field": "love",
+				"email":      "",
+				"info":       "",
 			},
 			Result: CaseResponse{
 				"response": CaseResponse{
@@ -456,13 +472,15 @@ func TestApis(t *testing.T) {
 			Path: "/users/2",
 			Result: CaseResponse{
 				"response": CaseResponse{
-					"record": CaseResponse{
-						"user_id":  2,
-						"login":    "qwerty'",
-						"password": "love\"",
-						"email":    "",
-						"info":     "",
-						"updated":  nil,
+					"records": []CaseResponse{
+						{
+							"user_id":  2,
+							"login":    "qwerty'",
+							"password": "love\"",
+							"email":    "",
+							"info":     "",
+							"updated":  nil,
+						},
 					},
 				},
 			},

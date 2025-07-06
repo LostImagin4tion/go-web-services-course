@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -8,9 +9,11 @@ import (
 )
 
 type tableColumn struct {
-	Name       string
-	DataType   string
-	IsNullable bool
+	Name            string
+	DataType        string
+	IsNullable      bool
+	isPrimaryKey    bool
+	isAutoIncrement bool
 }
 
 func (d *DbExplorer) getTableColumnsMap(table string) (map[string]tableColumn, error) {
@@ -29,29 +32,11 @@ func (d *DbExplorer) getTableColumnsMap(table string) (map[string]tableColumn, e
 	var tables = make(map[string]tableColumn)
 
 	for rows.Next() {
-		var columnName string
-		var dataTypeRaw string
-		var isNullableRaw string
-
-		err = rows.Scan(&columnName, &dataTypeRaw, &isNullableRaw)
-		if err != nil {
-			log.Println("Failed to scan tables row")
+		var name, column = parseRow(rows)
+		if column == nil {
 			continue
 		}
-
-		var dataType string
-		switch dataTypeRaw {
-		case "varchar", "text":
-			dataType = "string"
-		default:
-			dataType = dataTypeRaw
-		}
-
-		tables[columnName] = tableColumn{
-			Name:       columnName,
-			DataType:   dataType,
-			IsNullable: isNullableRaw == "YES",
-		}
+		tables[name] = *column
 	}
 
 	return tables, nil
@@ -73,33 +58,61 @@ func (d *DbExplorer) getTableColumnsList(table string) ([]tableColumn, error) {
 	var columns = make([]tableColumn, 0)
 
 	for rows.Next() {
-		var columnName string
-		var dataTypeRaw string
-		var isNullableRaw string
-
-		err = rows.Scan(&columnName, &dataTypeRaw, &isNullableRaw)
-		if err != nil {
-			log.Println("Failed to scan tables row")
+		var _, column = parseRow(rows)
+		if column == nil {
 			continue
 		}
-
-		var dataType string
-		switch dataTypeRaw {
-		case "varchar", "text":
-			dataType = "string"
-		default:
-			dataType = dataTypeRaw
-		}
-
 		columns = append(
 			columns,
-			tableColumn{
-				Name:       columnName,
-				DataType:   dataType,
-				IsNullable: isNullableRaw == "YES",
-			},
+			*column,
 		)
 	}
 
 	return columns, nil
+}
+
+func parseRow(rows *sql.Rows) (string, *tableColumn) {
+	var columnName string
+	var dataTypeRaw string
+	var isNullableRaw string
+	var columnKey string
+	var extra string
+
+	var err = rows.Scan(
+		&columnName,
+		&dataTypeRaw,
+		&isNullableRaw,
+		&columnKey,
+		&extra,
+	)
+	if err != nil {
+		log.Printf("Failed to scan tables row: %v\n", err)
+	}
+
+	var dataType string
+	switch dataTypeRaw {
+	case "varchar", "text":
+		dataType = "string"
+	default:
+		dataType = dataTypeRaw
+	}
+
+	return columnName, &tableColumn{
+		Name:            columnName,
+		DataType:        dataType,
+		IsNullable:      isNullableRaw == "YES",
+		isPrimaryKey:    columnKey == "PRI",
+		isAutoIncrement: extra == "auto_increment",
+	}
+}
+
+func findPrimaryKeyColumn(columns map[string]tableColumn) string {
+	var primaryKey string
+	for _, value := range columns {
+		if value.isPrimaryKey {
+			primaryKey = value.Name
+			break
+		}
+	}
+	return primaryKey
 }

@@ -14,13 +14,13 @@ func (d *DbExplorer) handleArbitraryPath(r *http.Request) (any, error) {
 	var apiPath = r.URL.Path
 	var split = strings.Split(apiPath, "/")
 
-	var table = split[0]
+	var table = split[1]
 
 	var id = -1
 	var err error
 
-	if len(split) > 1 {
-		id, err = strconv.Atoi(split[1])
+	if len(split) > 2 && len(split[2]) > 0 {
+		id, err = strconv.Atoi(split[2])
 		if err != nil {
 			return nil, apiError{
 				ResponseCode: http.StatusBadRequest,
@@ -31,7 +31,7 @@ func (d *DbExplorer) handleArbitraryPath(r *http.Request) (any, error) {
 	if id == -1 && (r.Method == http.MethodPost || r.Method == http.MethodDelete) {
 		return nil, apiError{
 			ResponseCode: http.StatusBadRequest,
-			Err:          fmt.Errorf("id has invalid type"),
+			Err:          fmt.Errorf("id is not specified or has invalid type"),
 		}
 	}
 
@@ -67,19 +67,32 @@ func (d *DbExplorer) handleGetRequest(
 	)
 
 	if id != -1 {
-		rows, err = d.Db.Query(
+		var tableColumns map[string]tableColumn
+		tableColumns, err = d.getTableColumnsMap(table)
+		if err != nil {
+			return nil, err
+		}
+
+		var primaryKeyColumn = findPrimaryKeyColumn(tableColumns)
+
+		var formattedQuery = fmt.Sprintf(
 			d.QueriesMap[queries.SelectFromTableQuery],
 			table,
-			id,
+			fmt.Sprintf("`%s` = %v", primaryKeyColumn, id),
 		)
+		rows, err = d.Db.Query(formattedQuery)
 	} else {
 		var queryParams = d.parseQueryParams(r)
 		var limit = queryParams["limit"]
 		var offset = queryParams["offset"]
 
-		rows, err = d.Db.Query(
+		var formattedQuery = fmt.Sprintf(
 			d.QueriesMap[queries.SelectAllFromTableQuery],
 			table,
+		)
+
+		rows, err = d.Db.Query(
+			formattedQuery,
 			limit,
 			offset,
 		)
@@ -93,18 +106,47 @@ func (d *DbExplorer) handleGetRequest(
 	}
 	defer rows.Close()
 
-	var items = make([]any, 0)
+	var items = make([]map[string]any, 0)
 
 	for rows.Next() {
-		var item any
-		err = rows.Scan(item)
+		var columns, _ = rows.Columns()
+		var itemFields = make([]any, len(columns))
+		var itemFieldsReference = make([]any, len(columns))
+
+		for i := range itemFields {
+			itemFieldsReference[i] = &itemFields[i]
+		}
+
+		err = rows.Scan(itemFieldsReference...)
 		if err != nil {
-			log.Println("Failed to scan tables row")
+			log.Println("Failed to scan tables row, ", err)
 			continue
 		}
-		items = append(items, item)
+
+		var itemMap = make(map[string]any)
+		for i, name := range columns {
+			value := itemFields[i]
+
+			if bytes, ok := value.([]byte); ok {
+				itemMap[name] = string(bytes)
+			} else {
+				itemMap[name] = value
+			}
+		}
+
+		items = append(items, itemMap)
 	}
-	return items, nil
+
+	if len(items) == 0 {
+		return nil, apiError{
+			ResponseCode: http.StatusNotFound,
+			Err:          fmt.Errorf("record not found"),
+		}
+	}
+
+	return map[string]any{
+		"records": items,
+	}, nil
 }
 
 func (d *DbExplorer) handlePutRequest(
@@ -112,30 +154,41 @@ func (d *DbExplorer) handlePutRequest(
 	table string,
 ) (any, error) {
 
-	var body, err = d.parseBody(r)
+	body, err := d.parseBody(r)
 	if err != nil {
 		return nil, err
 	}
 
-	var columns = make([]string, len(body))
-	var values = make([]string, len(body))
-
-	for column := range body {
-		columns = append(columns, column)
-	}
-	for _, value := range body {
-		values = append(values, fmt.Sprintf("%v", value))
+	tableColumns, err := d.getTableColumnsMap(table)
+	if err != nil {
+		return nil, err
 	}
 
-	var columnsArg = fmt.Sprintf("'%s'", strings.Join(columns, ","))
-	var valuesArg = fmt.Sprintf("'%s'", strings.Join(values, ","))
+	var primaryKeyColumn = findPrimaryKeyColumn(tableColumns)
+	var columns = make([]string, 0)
+	var values = make([]string, 0)
 
-	result, err := d.Db.Exec(
+	for columnName, value := range body {
+		if _, exists := tableColumns[columnName]; !exists || columnName == primaryKeyColumn {
+			continue
+		}
+
+		columns = append(columns, columnName)
+
+		values = append(
+			values,
+			fmt.Sprintf("%v", parseBodyValue(value)),
+		)
+	}
+
+	var formattedQuery = fmt.Sprintf(
 		d.QueriesMap[queries.CreateNewItemQuery],
 		table,
-		columnsArg,
-		valuesArg,
+		strings.Join(columns, ", "),
+		strings.Join(values, ", "),
 	)
+
+	result, err := d.Db.Exec(formattedQuery)
 
 	if err != nil {
 		return nil, apiError{
@@ -153,7 +206,7 @@ func (d *DbExplorer) handlePutRequest(
 	}
 
 	return map[string]int{
-		columns[0]: int(lastId),
+		primaryKeyColumn: int(lastId),
 	}, nil
 }
 
@@ -168,30 +221,30 @@ func (d *DbExplorer) handlePostRequest(
 		return nil, err
 	}
 
-	columns, err := d.getTableColumnsList(table)
+	columns, err := d.getTableColumnsMap(table)
 	if err != nil {
 		return nil, err
 	}
 
-	var args = make([]any, len(body)+2)
-	args = append(args, table)
+	var primaryKeyColumn = findPrimaryKeyColumn(columns)
+
+	var setArgs = make([]string, 0)
 
 	for name, value := range body {
-		args = append(
-			args,
-			fmt.Sprintf("`%s` = %v", name, value),
+		setArgs = append(
+			setArgs,
+			fmt.Sprintf("`%s` = %v", name, parseBodyValue(value)),
 		)
 	}
 
-	args = append(
-		args,
-		fmt.Sprintf("%s = %v", columns[0].Name, id),
+	var formattedQuery = fmt.Sprintf(
+		d.QueriesMap[queries.UpdateItemQuery],
+		table,
+		strings.Join(setArgs, ", "),
+		fmt.Sprintf("%s = %v", primaryKeyColumn, id),
 	)
 
-	result, err := d.Db.Exec(
-		d.QueriesMap[queries.UpdateItemQuery],
-		args...,
-	)
+	result, err := d.Db.Exec(formattedQuery)
 
 	if err != nil {
 		return nil, apiError{
@@ -218,21 +271,20 @@ func (d *DbExplorer) handleDeleteRequest(
 	id int,
 ) (any, error) {
 
-	columns, err := d.getTableColumnsList(table)
+	columns, err := d.getTableColumnsMap(table)
 	if err != nil {
 		return nil, err
 	}
 
-	var args = []any{table}
-	args = append(
-		args,
-		fmt.Sprintf("%s = %v", columns[0].Name, id),
+	var primaryKeyColumn = findPrimaryKeyColumn(columns)
+
+	var formattedQuery = fmt.Sprintf(
+		d.QueriesMap[queries.DeleteItemQuery],
+		table,
+		fmt.Sprintf("`%s` = %v", primaryKeyColumn, id),
 	)
 
-	result, err := d.Db.Exec(
-		d.QueriesMap[queries.DeleteItemQuery],
-		args...,
-	)
+	result, err := d.Db.Exec(formattedQuery)
 
 	if err != nil {
 		return nil, apiError{
@@ -252,4 +304,19 @@ func (d *DbExplorer) handleDeleteRequest(
 	return map[string]int{
 		"deleted": int(rowsAffected),
 	}, nil
+}
+
+func parseBodyValue(value any) any {
+	var fmtValue any
+	if strValue, ok := value.(string); ok {
+		fmtValue = fmt.Sprintf(
+			"'%v'",
+			strings.ReplaceAll(strValue, "'", "''"),
+		)
+	} else if value == nil {
+		fmtValue = "null"
+	} else {
+		fmtValue = value
+	}
+	return fmtValue
 }

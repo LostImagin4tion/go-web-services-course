@@ -13,5 +13,12 @@ func (d *DbExplorer) handleRootPath(r *http.Request) (any, error) {
 		}
 	}
 
-	return d.selectExistingTables()
+	var tables, err = d.selectExistingTables()
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"tables": tables,
+	}, nil
 }

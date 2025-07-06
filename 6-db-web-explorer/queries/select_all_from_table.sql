@@ -1,3 +1,3 @@
 SELECT *
-FROM ?
+FROM %s
 LIMIT ? OFFSET ?;

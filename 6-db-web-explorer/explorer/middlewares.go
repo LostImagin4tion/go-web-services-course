@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -12,7 +13,7 @@ func (d *DbExplorer) validateTable(r *http.Request) error {
 	if endpoint != "/" {
 		var split = strings.Split(endpoint, "/")
 
-		var table = split[0]
+		var table = split[1]
 
 		var tables, err = d.selectExistingTables()
 
@@ -34,7 +35,7 @@ func (d *DbExplorer) validateColumnTables(r *http.Request) error {
 	if endpoint != "/" && (r.Method == http.MethodPost || r.Method == http.MethodPut) {
 		var split = strings.Split(endpoint, "/")
 
-		var table = split[0]
+		var table = split[1]
 
 		bodyColumns, err := d.parseBody(r)
 		if err != nil {
@@ -49,12 +50,25 @@ func (d *DbExplorer) validateColumnTables(r *http.Request) error {
 		for name, value := range bodyColumns {
 			var column, exists = columns[name]
 			if !exists {
+				continue
+			}
+
+			if column.isPrimaryKey && r.Method == http.MethodPost {
 				return apiError{
 					ResponseCode: http.StatusBadRequest,
-					Err:          fmt.Errorf("wrong column"),
+					Err:          fmt.Errorf("field %v has invalid type", column.Name),
 				}
 			}
-			if (value == nil && !column.IsNullable) || (fmt.Sprintf("%T", value) != column.DataType) {
+
+			if number, isNumber := value.(json.Number); isNumber {
+				if _, err = number.Int64(); (err == nil && column.DataType == "int") || column.DataType == "float" {
+					return nil
+				}
+			}
+			if value == nil && column.IsNullable {
+				return nil
+			}
+			if fmt.Sprintf("%T", value) != column.DataType {
 				return apiError{
 					ResponseCode: http.StatusBadRequest,
 					Err:          fmt.Errorf("field %v has invalid type", name),

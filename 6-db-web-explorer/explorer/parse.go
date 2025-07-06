@@ -1,6 +1,7 @@
 package explorer
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,8 +37,17 @@ func (d *DbExplorer) parseBody(r *http.Request) (map[string]any, error) {
 		}
 	}
 
+	var decoder = json.NewDecoder(bytes.NewBuffer(body))
+	decoder.UseNumber()
+
 	var bodyDump interface{}
-	json.Unmarshal(body, &bodyDump)
+	err = decoder.Decode(&bodyDump)
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusInternalServerError,
+			Err:          fmt.Errorf("failed to unmarshal body: %v", err),
+		}
+	}
 
 	var bodyMap, ok = bodyDump.(map[string]any)
 	if !ok {
@@ -46,5 +56,9 @@ func (d *DbExplorer) parseBody(r *http.Request) (map[string]any, error) {
 			Err:          fmt.Errorf("body contains not json"),
 		}
 	}
+
+	r.Body.Close()
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+
 	return bodyMap, nil
 }

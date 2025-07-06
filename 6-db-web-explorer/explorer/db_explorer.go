@@ -31,14 +31,9 @@ func (d *DbExplorer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		var err = middleware(r)
 		if err == nil {
 			continue
-		}
-
-		var apiErr = apiError{}
-		var ok = errors.As(err, &apiErr)
-		if ok {
-			http.Error(w, apiErr.Error(), apiErr.ResponseCode)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			handleApiError(w, err)
+			return
 		}
 	}
 
@@ -54,21 +49,40 @@ func (d *DbExplorer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		var apiErr = apiError{}
-		var ok = errors.As(err, &apiErr)
-		if ok {
-			http.Error(w, apiErr.Error(), apiErr.ResponseCode)
-		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
+		handleApiError(w, err)
 	} else {
-		marshaledOutput, err := json.Marshal(output)
+		var response = map[string]any{
+			"response": output,
+		}
+		marshaledResponse, err := json.Marshal(response)
 		if err != nil {
 			http.Error(w, "failed to marshal output", http.StatusInternalServerError)
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		w.Write(marshaledOutput)
+		w.Write(marshaledResponse)
 	}
+}
+
+func handleApiError(w http.ResponseWriter, err error) {
+	var apiErr = apiError{}
+	var ok = errors.As(err, &apiErr)
+
+	var jsonError = map[string]string{
+		"error": apiErr.Error(),
+	}
+
+	marshalledJson, err := json.Marshal(jsonError)
+	if err != nil {
+		http.Error(w, "failed to marshal output", http.StatusInternalServerError)
+		return
+	}
+
+	if ok {
+		w.WriteHeader(apiErr.ResponseCode)
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	w.Write(marshalledJson)
 }

@@ -1,2 +1,2 @@
-INSERT INTO ? (?)
-VALUES (?)
+INSERT INTO %s (%s)
+VALUES (%s)

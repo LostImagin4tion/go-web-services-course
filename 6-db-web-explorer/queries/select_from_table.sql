@@ -1,3 +1,3 @@
 SELECT *
-FROM ?
-WHERE id = ?
+FROM %s
+WHERE %s;
