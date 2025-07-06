@@ -1,5 +1,11 @@
 package queries
 
+import (
+	"fmt"
+	"io"
+	"os"
+)
+
 const (
 	queriesDir = "./queries/"
 
@@ -13,6 +19,35 @@ const (
 	DeleteItemQuery         = "delete_item.sql"
 )
 
-func NewQueriesMap() map[string]string {
+var (
+	queries = []string{
+		CreateSampleDbQuery,
+		SelectTablesQuery,
+		SelectTableColumnsQuery,
+		SelectFromTableQuery,
+		SelectAllFromTableQuery,
+		CreateNewItemQuery,
+		UpdateItemQuery,
+		DeleteItemQuery,
+	}
+)
 
+func NewQueriesMap() map[string]string {
+	var queriesMap = make(map[string]string)
+
+	for _, query := range queries {
+		file, err := os.Open(fmt.Sprintf("%s%s", queriesDir, query))
+		if err != nil {
+			panic(err)
+		}
+
+		fileContent, err := io.ReadAll(file)
+		if err != nil {
+			panic(err)
+		}
+
+		queriesMap[query] = string(fileContent)
+	}
+
+	return queriesMap
 }
