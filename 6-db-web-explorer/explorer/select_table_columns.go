@@ -13,7 +13,7 @@ type tableColumn struct {
 	IsNullable bool
 }
 
-func (d *DbExplorer) selectTableColumns(table string) (map[string]tableColumn, error) {
+func (d *DbExplorer) getTableColumnsMap(table string) (map[string]tableColumn, error) {
 	var rows, err = d.Db.Query(
 		d.QueriesMap[queries.SelectTableColumnsQuery],
 		table,
@@ -55,4 +55,51 @@ func (d *DbExplorer) selectTableColumns(table string) (map[string]tableColumn, e
 	}
 
 	return tables, nil
+}
+
+func (d *DbExplorer) getTableColumnsList(table string) ([]tableColumn, error) {
+	var rows, err = d.Db.Query(
+		d.QueriesMap[queries.SelectTableColumnsQuery],
+		table,
+	)
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusInternalServerError,
+			Err:          fmt.Errorf("failed to select tables: %v", err),
+		}
+	}
+	defer rows.Close()
+
+	var columns = make([]tableColumn, 0)
+
+	for rows.Next() {
+		var columnName string
+		var dataTypeRaw string
+		var isNullableRaw string
+
+		err = rows.Scan(&columnName, &dataTypeRaw, &isNullableRaw)
+		if err != nil {
+			log.Println("Failed to scan tables row")
+			continue
+		}
+
+		var dataType string
+		switch dataTypeRaw {
+		case "varchar", "text":
+			dataType = "string"
+		default:
+			dataType = dataTypeRaw
+		}
+
+		columns = append(
+			columns,
+			tableColumn{
+				Name:       columnName,
+				DataType:   dataType,
+				IsNullable: isNullableRaw == "YES",
+			},
+		)
+	}
+
+	return columns, nil
 }

@@ -41,7 +41,7 @@ func (d *DbExplorer) validateColumnTables(r *http.Request) error {
 			return err
 		}
 
-		columns, err := d.selectTableColumns(table)
+		columns, err := d.getTableColumnsMap(table)
 		if err != nil {
 			return err
 		}

@@ -46,7 +46,7 @@ func (d *DbExplorer) handleArbitraryPath(r *http.Request) (any, error) {
 		return d.handlePostRequest(r, table, id)
 
 	case http.MethodDelete:
-		return d.handleDeleteRequest(r, table, id)
+		return d.handleDeleteRequest(table, id)
 
 	default:
 		return nil, apiError{
@@ -113,6 +113,10 @@ func (d *DbExplorer) handlePutRequest(
 ) (any, error) {
 
 	var body, err = d.parseBody(r)
+	if err != nil {
+		return nil, err
+	}
+
 	var columns = make([]string, len(body))
 	var values = make([]string, len(body))
 
@@ -159,7 +163,15 @@ func (d *DbExplorer) handlePostRequest(
 	id int,
 ) (any, error) {
 
-	var body, err = d.parseBody(r)
+	body, err := d.parseBody(r)
+	if err != nil {
+		return nil, err
+	}
+
+	columns, err := d.getTableColumnsList(table)
+	if err != nil {
+		return nil, err
+	}
 
 	var args = make([]any, len(body)+2)
 	args = append(args, table)
@@ -171,7 +183,10 @@ func (d *DbExplorer) handlePostRequest(
 		)
 	}
 
-	args = append(args, id)
+	args = append(
+		args,
+		fmt.Sprintf("%s = %v", columns[0].Name, id),
+	)
 
 	result, err := d.Db.Exec(
 		d.QueriesMap[queries.UpdateItemQuery],
@@ -199,9 +214,42 @@ func (d *DbExplorer) handlePostRequest(
 }
 
 func (d *DbExplorer) handleDeleteRequest(
-	r *http.Request,
 	table string,
 	id int,
 ) (any, error) {
 
+	columns, err := d.getTableColumnsList(table)
+	if err != nil {
+		return nil, err
+	}
+
+	var args = []any{table}
+	args = append(
+		args,
+		fmt.Sprintf("%s = %v", columns[0].Name, id),
+	)
+
+	result, err := d.Db.Exec(
+		d.QueriesMap[queries.DeleteItemQuery],
+		args...,
+	)
+
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusBadRequest,
+			Err:          fmt.Errorf("failed to delete item: %v", err),
+		}
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return nil, apiError{
+			ResponseCode: http.StatusInternalServerError,
+			Err:          fmt.Errorf("failed to get affected rows: %v", err),
+		}
+	}
+
+	return map[string]int{
+		"deleted": int(rowsAffected),
+	}, nil
 }
