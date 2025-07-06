@@ -2,6 +2,7 @@ package explorer
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net/http"
 )
@@ -50,5 +51,24 @@ func (d *DbExplorer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		output, err = d.handleRootPath(r)
 	} else {
 		output, err = d.handleArbitraryPath(r)
+	}
+
+	if err != nil {
+		var apiErr = apiError{}
+		var ok = errors.As(err, &apiErr)
+		if ok {
+			http.Error(w, apiErr.Error(), apiErr.ResponseCode)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	} else {
+		marshaledOutput, err := json.Marshal(output)
+		if err != nil {
+			http.Error(w, "failed to marshal output", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write(marshaledOutput)
 	}
 }
