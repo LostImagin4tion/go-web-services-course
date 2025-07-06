@@ -3,12 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"reflect"
+	"stepikGoWebServices/explorer"
+	"stepikGoWebServices/queries"
 	"testing"
 
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -16,15 +18,15 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type CaseResponse map[string]interface{}
+type CaseResponse map[string]any
 
 type Case struct {
 	Method string
 	Path   string
 	Query  string
 	Status int
-	Result interface{}
-	Body   interface{}
+	Result any
+	Body   any
 }
 
 var (
@@ -95,12 +97,12 @@ func TestApis(t *testing.T) {
 
 	defer CleanupTestApis(db)
 
-	handler, err := NewDbExplorer(db)
+	handler, err := explorer.NewDbExplorer(db, queries.NewQueriesMap())
 	if err != nil {
 		panic(err)
 	}
 
-	ts := httptest.NewServer(handler)
+	ts := httptest.NewServer(&handler)
 
 	cases := []Case{
 		{
@@ -123,13 +125,13 @@ func TestApis(t *testing.T) {
 			Result: CaseResponse{
 				"response": CaseResponse{
 					"records": []CaseResponse{
-						CaseResponse{
+						{
 							"id":          1,
 							"title":       "database/sql",
 							"description": "Рассказать про базы данных",
 							"updated":     "rvasily",
 						},
-						CaseResponse{
+						{
 							"id":          2,
 							"title":       "memcache",
 							"description": "Рассказать про мемкеш с примером использования",
@@ -502,8 +504,8 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 	for idx, item := range cases {
 		var (
 			err      error
-			result   interface{}
-			expected interface{}
+			result   any
+			expected any
 			req      *http.Request
 		)
 
@@ -533,9 +535,9 @@ func runCases(t *testing.T, ts *httptest.Server, db *sql.DB, cases []Case) {
 			continue
 		}
 		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
 
-		// fmt.Printf("[%s] body: %s\n", caseName, string(body))
+		body, err := io.ReadAll(resp.Body)
+
 		if item.Status == 0 {
 			item.Status = http.StatusOK
 		}
