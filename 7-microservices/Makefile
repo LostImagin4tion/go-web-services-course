@@ -10,7 +10,6 @@ gen:
 	protoc-gen-go-grpc --version # 1.2.0
 	protoc --go_out=./generated/ --go-grpc_out=./generated/ ./proto/service.proto
 	# in combination with 'option go_package = ".";' in service.proto this will generate files in this folder with package main
-#	sed -i "" 's/package __/package main/g' *.pb.go
 
 test:
 	go test -v -race
