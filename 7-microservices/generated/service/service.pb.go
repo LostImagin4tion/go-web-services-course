@@ -265,8 +265,8 @@ const file_proto_service_proto_rawDesc = "" +
 	"\x05Admin\x12/\n" +
 	"\aLogging\x12\x10.service.Nothing\x1a\x0e.service.Event\"\x000\x01\x126\n" +
 	"\n" +
-	"Statistics\x12\x15.service.StatInterval\x1a\r.service.Stat\"\x000\x012\x8f\x01\n" +
-	"\x03Biz\x12-\n" +
+	"Statistics\x12\x15.service.StatInterval\x1a\r.service.Stat\"\x000\x012\x99\x01\n" +
+	"\rBusinessLogic\x12-\n" +
 	"\x05Check\x12\x10.service.Nothing\x1a\x10.service.Nothing\"\x00\x12+\n" +
 	"\x03Add\x12\x10.service.Nothing\x1a\x10.service.Nothing\"\x00\x12,\n" +
 	"\x04Test\x12\x10.service.Nothing\x1a\x10.service.Nothing\"\x00B\vZ\t./serviceb\x06proto3"
@@ -297,14 +297,14 @@ var file_proto_service_proto_depIdxs = []int32{
 	5, // 1: service.Stat.by_consumer:type_name -> service.Stat.ByConsumerEntry
 	3, // 2: service.Admin.Logging:input_type -> service.Nothing
 	2, // 3: service.Admin.Statistics:input_type -> service.StatInterval
-	3, // 4: service.Biz.Check:input_type -> service.Nothing
-	3, // 5: service.Biz.Add:input_type -> service.Nothing
-	3, // 6: service.Biz.Test:input_type -> service.Nothing
+	3, // 4: service.BusinessLogic.Check:input_type -> service.Nothing
+	3, // 5: service.BusinessLogic.Add:input_type -> service.Nothing
+	3, // 6: service.BusinessLogic.Test:input_type -> service.Nothing
 	0, // 7: service.Admin.Logging:output_type -> service.Event
 	1, // 8: service.Admin.Statistics:output_type -> service.Stat
-	3, // 9: service.Biz.Check:output_type -> service.Nothing
-	3, // 10: service.Biz.Add:output_type -> service.Nothing
-	3, // 11: service.Biz.Test:output_type -> service.Nothing
+	3, // 9: service.BusinessLogic.Check:output_type -> service.Nothing
+	3, // 10: service.BusinessLogic.Add:output_type -> service.Nothing
+	3, // 11: service.BusinessLogic.Test:output_type -> service.Nothing
 	7, // [7:12] is the sub-list for method output_type
 	2, // [2:7] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

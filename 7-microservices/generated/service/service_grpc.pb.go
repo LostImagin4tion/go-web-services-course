@@ -165,177 +165,177 @@ var Admin_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Biz_Check_FullMethodName = "/service.Biz/Check"
-	Biz_Add_FullMethodName   = "/service.Biz/Add"
-	Biz_Test_FullMethodName  = "/service.Biz/Test"
+	BusinessLogic_Check_FullMethodName = "/service.BusinessLogic/Check"
+	BusinessLogic_Add_FullMethodName   = "/service.BusinessLogic/Add"
+	BusinessLogic_Test_FullMethodName  = "/service.BusinessLogic/Test"
 )
 
-// BizClient is the client API for Biz service.
+// BusinessLogicClient is the client API for BusinessLogic service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type BizClient interface {
+type BusinessLogicClient interface {
 	Check(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 	Add(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 	Test(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error)
 }
 
-type bizClient struct {
+type businessLogicClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewBizClient(cc grpc.ClientConnInterface) BizClient {
-	return &bizClient{cc}
+func NewBusinessLogicClient(cc grpc.ClientConnInterface) BusinessLogicClient {
+	return &businessLogicClient{cc}
 }
 
-func (c *bizClient) Check(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *businessLogicClient) Check(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Nothing)
-	err := c.cc.Invoke(ctx, Biz_Check_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, BusinessLogic_Check_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *bizClient) Add(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *businessLogicClient) Add(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Nothing)
-	err := c.cc.Invoke(ctx, Biz_Add_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, BusinessLogic_Add_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *bizClient) Test(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
+func (c *businessLogicClient) Test(ctx context.Context, in *Nothing, opts ...grpc.CallOption) (*Nothing, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Nothing)
-	err := c.cc.Invoke(ctx, Biz_Test_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, BusinessLogic_Test_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// BizServer is the server API for Biz service.
-// All implementations must embed UnimplementedBizServer
+// BusinessLogicServer is the server API for BusinessLogic service.
+// All implementations must embed UnimplementedBusinessLogicServer
 // for forward compatibility.
-type BizServer interface {
+type BusinessLogicServer interface {
 	Check(context.Context, *Nothing) (*Nothing, error)
 	Add(context.Context, *Nothing) (*Nothing, error)
 	Test(context.Context, *Nothing) (*Nothing, error)
-	mustEmbedUnimplementedBizServer()
+	mustEmbedUnimplementedBusinessLogicServer()
 }
 
-// UnimplementedBizServer must be embedded to have
+// UnimplementedBusinessLogicServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedBizServer struct{}
+type UnimplementedBusinessLogicServer struct{}
 
-func (UnimplementedBizServer) Check(context.Context, *Nothing) (*Nothing, error) {
+func (UnimplementedBusinessLogicServer) Check(context.Context, *Nothing) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
 }
-func (UnimplementedBizServer) Add(context.Context, *Nothing) (*Nothing, error) {
+func (UnimplementedBusinessLogicServer) Add(context.Context, *Nothing) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
-func (UnimplementedBizServer) Test(context.Context, *Nothing) (*Nothing, error) {
+func (UnimplementedBusinessLogicServer) Test(context.Context, *Nothing) (*Nothing, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Test not implemented")
 }
-func (UnimplementedBizServer) mustEmbedUnimplementedBizServer() {}
-func (UnimplementedBizServer) testEmbeddedByValue()             {}
+func (UnimplementedBusinessLogicServer) mustEmbedUnimplementedBusinessLogicServer() {}
+func (UnimplementedBusinessLogicServer) testEmbeddedByValue()                       {}
 
-// UnsafeBizServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to BizServer will
+// UnsafeBusinessLogicServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to BusinessLogicServer will
 // result in compilation errors.
-type UnsafeBizServer interface {
-	mustEmbedUnimplementedBizServer()
+type UnsafeBusinessLogicServer interface {
+	mustEmbedUnimplementedBusinessLogicServer()
 }
 
-func RegisterBizServer(s grpc.ServiceRegistrar, srv BizServer) {
-	// If the following call pancis, it indicates UnimplementedBizServer was
+func RegisterBusinessLogicServer(s grpc.ServiceRegistrar, srv BusinessLogicServer) {
+	// If the following call pancis, it indicates UnimplementedBusinessLogicServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Biz_ServiceDesc, srv)
+	s.RegisterService(&BusinessLogic_ServiceDesc, srv)
 }
 
-func _Biz_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _BusinessLogic_Check_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Nothing)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BizServer).Check(ctx, in)
+		return srv.(BusinessLogicServer).Check(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Biz_Check_FullMethodName,
+		FullMethod: BusinessLogic_Check_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BizServer).Check(ctx, req.(*Nothing))
+		return srv.(BusinessLogicServer).Check(ctx, req.(*Nothing))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Biz_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _BusinessLogic_Add_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Nothing)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BizServer).Add(ctx, in)
+		return srv.(BusinessLogicServer).Add(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Biz_Add_FullMethodName,
+		FullMethod: BusinessLogic_Add_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BizServer).Add(ctx, req.(*Nothing))
+		return srv.(BusinessLogicServer).Add(ctx, req.(*Nothing))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Biz_Test_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _BusinessLogic_Test_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(Nothing)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(BizServer).Test(ctx, in)
+		return srv.(BusinessLogicServer).Test(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Biz_Test_FullMethodName,
+		FullMethod: BusinessLogic_Test_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BizServer).Test(ctx, req.(*Nothing))
+		return srv.(BusinessLogicServer).Test(ctx, req.(*Nothing))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Biz_ServiceDesc is the grpc.ServiceDesc for Biz service.
+// BusinessLogic_ServiceDesc is the grpc.ServiceDesc for BusinessLogic service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Biz_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "service.Biz",
-	HandlerType: (*BizServer)(nil),
+var BusinessLogic_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "service.BusinessLogic",
+	HandlerType: (*BusinessLogicServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Check",
-			Handler:    _Biz_Check_Handler,
+			Handler:    _BusinessLogic_Check_Handler,
 		},
 		{
 			MethodName: "Add",
-			Handler:    _Biz_Add_Handler,
+			Handler:    _BusinessLogic_Add_Handler,
 		},
 		{
 			MethodName: "Test",
-			Handler:    _Biz_Test_Handler,
+			Handler:    _BusinessLogic_Test_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

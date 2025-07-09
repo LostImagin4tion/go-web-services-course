@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-// option go_package = ".;main";
-// option go_package = "./api";
 option go_package = "./service";
 
 package service;
@@ -32,7 +30,7 @@ service Admin {
     rpc Statistics (StatInterval) returns (stream Stat) {}
 }
 
-service Biz {
+service BusinessLogic {
     rpc Check(Nothing) returns(Nothing) {}
     rpc Add(Nothing) returns(Nothing) {}
     rpc Test(Nothing) returns(Nothing) {}
