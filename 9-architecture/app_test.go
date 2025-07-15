@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"regexp"
+	"stepikGoWebServices/handlers"
 	"strings"
 	"testing"
 	"time"
@@ -79,8 +80,8 @@ func WeirdMagicClone(in interface{}) interface{} {
 
 func TestApp(t *testing.T) {
 	var (
-		app        = GetApp()
-		testServer = httptest.NewServer(app)
+		api        = handlers.NewRealWorldApi()
+		testServer = httptest.NewServer(api)
 
 		// username = RandStringRunes(16)
 		username = "golang"
@@ -266,7 +267,7 @@ func TestApp(t *testing.T) {
 		{
 			Name:           "Articles - Create Article - First user",
 			Method:         "POST",
-			Body:           `{"article":{"title":"How to write golang tests", "description":"I have problem with mondodb mocking", "body":"Any ideas how to write some intermidiate layer atop collection?", "tagList":["golang","testing", "gomock"]}}`,
+			Body:           `{"article":{"title":"How to write golang tests", "description":"I have problem with mondodb mocking", "body":"Any ideas how to write some intermediate layer atop collection?", "tagList":["golang","testing", "gomock"]}}`,
 			URL:            "{{APIURL}}/articles",
 			TokenName:      "token1",
 			ResponseStatus: 201,
@@ -276,10 +277,12 @@ func TestApp(t *testing.T) {
 				}{
 					Article: TestArticle{
 						Author: TestProfile{
-							Bio:      templateParams["BIO"],
-							Username: templateParams["USERNAME"],
+							Bio:       templateParams["BIO"],
+							Username:  templateParams["USERNAME"],
+							CreatedAt: FakeTime{true},
+							UpdatedAt: FakeTime{true},
 						},
-						Body:        "Any ideas how to write some intermidiate layer atop collection?",
+						Body:        "Any ideas how to write some intermediate layer atop collection?",
 						Title:       "How to write golang tests",
 						Description: "I have problem with mondodb mocking",
 						CreatedAt:   FakeTime{true},
@@ -310,7 +313,9 @@ func TestApp(t *testing.T) {
 				}{
 					Article: TestArticle{
 						Author: TestProfile{
-							Username: templateParams["USERNAME2"],
+							Username:  templateParams["USERNAME2"],
+							CreatedAt: FakeTime{true},
+							UpdatedAt: FakeTime{true},
 						},
 						Body:        "Will we use JWT-tokens in homework?",
 						Title:       "What will be released first, Half-Life 3 or 3-rd part of golang course?",
@@ -344,10 +349,12 @@ func TestApp(t *testing.T) {
 						{
 							Slug: templateParams["slug1"],
 							Author: TestProfile{
-								Bio:      templateParams["BIO"],
-								Username: templateParams["USERNAME"],
+								Bio:       templateParams["BIO"],
+								Username:  templateParams["USERNAME"],
+								CreatedAt: FakeTime{true},
+								UpdatedAt: FakeTime{true},
 							},
-							Body:        "Any ideas how to write some intermidiate layer atop collection?",
+							Body:        "Any ideas how to write some intermediate layer atop collection?",
 							Title:       "How to write golang tests",
 							Description: "I have problem with mondodb mocking",
 							CreatedAt:   FakeTime{true},
@@ -357,7 +364,9 @@ func TestApp(t *testing.T) {
 						{
 							Slug: templateParams["slug2"],
 							Author: TestProfile{
-								Username: templateParams["USERNAME2"],
+								Username:  templateParams["USERNAME2"],
+								CreatedAt: FakeTime{true},
+								UpdatedAt: FakeTime{true},
 							},
 							Body:        "Will we use JWT-tokens in homework?",
 							Title:       "What will be released first, Half-Life 3 or 3-rd part of golang course?",
@@ -388,7 +397,9 @@ func TestApp(t *testing.T) {
 						{
 							Slug: templateParams["slug2"],
 							Author: TestProfile{
-								Username: templateParams["USERNAME2"],
+								Username:  templateParams["USERNAME2"],
+								CreatedAt: FakeTime{true},
+								UpdatedAt: FakeTime{true},
 							},
 							Body:        "Will we use JWT-tokens in homework?",
 							Title:       "What will be released first, Half-Life 3 or 3-rd part of golang course?",
@@ -419,7 +430,9 @@ func TestApp(t *testing.T) {
 						{
 							Slug: templateParams["slug2"],
 							Author: TestProfile{
-								Username: templateParams["USERNAME2"],
+								Username:  templateParams["USERNAME2"],
+								CreatedAt: FakeTime{true},
+								UpdatedAt: FakeTime{true},
 							},
 							Body:        "Will we use JWT-tokens in homework?",
 							Title:       "What will be released first, Half-Life 3 or 3-rd part of golang course?",
