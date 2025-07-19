@@ -1,0 +1,21 @@
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+)
+
+const defaultPort = "8080"
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = defaultPort
+	}
+
+	var router = GetApp()
+
+	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Fatal(http.ListenAndServe(":"+port, router))
+}

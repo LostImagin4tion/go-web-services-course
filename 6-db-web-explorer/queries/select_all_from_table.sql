@@ -1,0 +1,3 @@
+SELECT *
+FROM %s
+LIMIT ? OFFSET ?;
