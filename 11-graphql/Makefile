@@ -16,4 +16,4 @@ init:
 .PHONY: gen
 gen: 
 	@echo "-- generatiog graphql files"
-	go run github.com/99designs/gqlgen generate --verbose --config ./gqlgen.yml
+	go run github.com/99designs/gqlgen generate --verbose --config configs/gqlgen.yml
