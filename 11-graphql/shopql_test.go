@@ -87,7 +87,7 @@ func TestApp(t *testing.T) {
 	}
 
 	testCases := []*ApiTestCase{
-		&ApiTestCase{
+		{
 			Name: "Catalogs list",
 			GQL: `
 			{
@@ -124,7 +124,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog page with param and items list - Tea - with default limit",
 			GQL: `
 			{
@@ -165,7 +165,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog page with param and items list - Books - items in subcatalog",
 			GQL: `
 			{
@@ -234,7 +234,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog page with param and items list and pagination",
 			GQL: `
 			{
@@ -267,7 +267,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog with seller name",
 			GQL: `
 			{
@@ -306,7 +306,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog with other seller",
 			GQL: `
 			{
@@ -366,7 +366,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog - inStockText",
 			GQL: `
 			{
@@ -421,7 +421,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Seller with items and item catalog",
 			GQL: `
 			{
@@ -486,7 +486,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog - how many in cart - ERROR(no access) - directive @authorized",
 			GQL: `
 			{
@@ -522,7 +522,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Add to cart - ERROR(no access) - directive @authorized",
 			GQL: `
 			mutation {
@@ -551,7 +551,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name:           "Register",
 			URL:            "/register",
 			Method:         http.MethodPost,
@@ -568,7 +568,7 @@ func TestApp(t *testing.T) {
 			},
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Add to cart - first item - success",
 			GQL: `
 			mutation {
@@ -601,7 +601,7 @@ func TestApp(t *testing.T) {
 			  }			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Add to cart - first item - check correct increment in cart",
 			GQL: `
 			mutation {
@@ -635,7 +635,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Add to cart - first item - check quantity availability",
 			GQL: `
 			mutation {
@@ -666,7 +666,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Add to cart - second item - before delete check",
 			GQL: `
 			mutation {
@@ -708,7 +708,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Remove from cart",
 			GQL: `
 			mutation {
@@ -741,7 +741,7 @@ func TestApp(t *testing.T) {
 		},
 
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "My Cart",
 			GQL: `
 			{
@@ -775,7 +775,7 @@ func TestApp(t *testing.T) {
 			`,
 		},
 		// ----------------------------------------------------------------------------------------
-		&ApiTestCase{
+		{
 			Name: "Catalog page with inCart param",
 			GQL: `
 			query{
@@ -909,7 +909,6 @@ func TestApp(t *testing.T) {
 
 			diff, equal := messagediff.PrettyDiff(item.Expected, got)
 			if !equal {
-				dd(item.Expected, got)
 				t.Fatalf("\033[1;31mresults not match\033[0m\n\033[1;35mbody\033[0m: %s\n\033[1;32mwant\033[0m %#v\n\033[1;34mgot\033[0m %#v\n\033[1;33mdiff\033[0m:\n%s", respBody, item.Expected, got, diff)
 			}
 
